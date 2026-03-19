@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会员中心 - 中文小说阅读网</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>📚 中文小说阅读网</h1>
+    <div class="nav">
+      <a href="index.html">返回首页</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <h2>会员套餐</h2>
+    <div class="membership-plans">
+      <div class="plan-card">
+        <h3>月度会员</h3>
+        <div class="price">¥30</div>
+        <p>畅读所有VIP小说</p>
+        <button class="btn" onclick="purchase(1)">立即购买</button>
+      </div>
+      <div class="plan-card">
+        <h3>季度会员</h3>
+        <div class="price">¥80</div>
+        <p>3个月会员权益</p>
+        <button class="btn" onclick="purchase(3)">立即购买</button>
+      </div>
+      <div class="plan-card">
+        <h3>年度会员</h3>
+        <div class="price">¥288</div>
+        <p>12个月会员权益</p>
+        <button class="btn" onclick="purchase(12)">立即购买</button>
+      </div>
+    </div>
+    <div id="message" style="margin-top:30px;"></div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+    const token = localStorage.getItem('token');
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+
+    if (!token) {
+      alert('请先登录');
+      location.href = 'login.html';
+    }
+
+    async function purchase(months) {
+      try {
+        const response = await fetch(`${API_URL}/purchase-membership`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ months })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          document.getElementById('message').innerHTML = `
+            <div class="success" style="background:white; padding:20px; border-radius:8px;">
+              <h3>✅ 购买成功！</h3>
+              <p>会员有效期至：${new Date(data.expireDate).toLocaleDateString()}</p>
+              <p><a href="index.html">返回首页开始阅读</a></p>
+            </div>
+          `;
+        } else {
+          document.getElementById('message').innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
+        }
+      } catch (error) {
+        document.getElementById('message').innerHTML = '<p class="error">购买失败，请稍后重试</p>';
+      }
+    }
+  </script>
+</body>
+</html>

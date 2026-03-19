@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>阅读中 - 中文小说阅读网</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header>
+        <h1>📚 中文小说阅读网</h1>
+        <div class="nav">
+            <a href="index.html">返回首页</a>
+            <a href="#" onclick="backToNovel(); return false;">返回目录</a>
+        </div>
+    </header>
+
+    <div class="container reader-container">
+        <div id="readerContent"></div>
+    </div>
+
+    <div class="reader-nav">
+        <button id="prevBtn" onclick="prevChapter()">上一章</button>
+        <span id="progressIndicator"></span>
+        <button id="nextBtn" onclick="nextChapter()">下一章</button>
+    </div>
+
+    <!-- 设置按钮 -->
+    <button class="settings-btn" onclick="toggleSettings()" title="阅读设置">⚙️</button>
+
+    <!-- 书签按钮 -->
+    <button class="bookmark-btn" onclick="toggleBookmarkPanel()" title="书签">🔖</button>
+
+    <!-- 评论按钮 -->
+    <button class="comment-btn" onclick="toggleCommentPanel()" title="评论">💬</button>
+
+    <!-- 设置面板 -->
+    <div id="settingsPanel" class="settings-panel">
+        <h3>阅读设置</h3>
+
+        <div class="setting-group">
+            <label>字体大小</label>
+            <div class="font-size-options">
+                <button onclick="setFontSize('small')">小</button>
+                <button onclick="setFontSize('medium')" class="active">中</button>
+                <button onclick="setFontSize('large')">大</button>
+                <button onclick="setFontSize('xlarge')">特大</button>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label>
+                <input type="checkbox" id="nightMode" onchange="toggleNightMode()">
+                夜间模式
+            </label>
+        </div>
+
+        <button class="close-settings" onclick="toggleSettings()">关闭</button>
+    </div>
+
+    <!-- 书签面板 -->
+    <div id="bookmarkPanel" class="settings-panel">
+        <h3>书签</h3>
+        <button class="btn-primary" onclick="addBookmark()" style="width:100%; margin-bottom:15px;">添加书签</button>
+        <div id="bookmarkList"></div>
+        <button class="close-settings" onclick="toggleBookmarkPanel()">关闭</button>
+    </div>
+
+    <!-- 评论面板 -->
+    <div id="commentPanel" class="settings-panel">
+        <h3>章节评论</h3>
+        <div class="comment-input-area">
+            <textarea id="commentInput" placeholder="发表你的看法..." rows="3"></textarea>
+            <button class="btn-primary" onclick="submitComment()">发表评论</button>
+        </div>
+        <div id="commentList"></div>
+        <button class="close-settings" onclick="toggleCommentPanel()">关闭</button>
+    </div>
+
+    <script>
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+        }
+
+        const API_URL = 'http://localhost:3000/api';
+        const token = localStorage.getItem('token');
+        const urlParams = new URLSearchParams(window.location.search);
+        const novelId = urlParams.get('novelId');
+        let currentChapter = parseInt(urlParams.get('chapter')) || 1;
+        let totalChapters = 0;
+        let saveTimeout;
+        let currentChapterId = null;
+
+        // 解析当前用户ID
+        let currentUserId = 0;
+        try {
+            if (token) {
+                currentUserId = JSON.parse(atob(token.split('.')[1])).id || 0;
+            }
+        } catch(e) {}
+
+        // 阅读时长追踪
+        let readingStartTime = Date.now();
+        let accumulatedTime = 0;
+
+        // 每30秒保存一次阅读时长
+        setInterval(() => {
+            if (currentChapterId) {
+                const sessionTime = Math.floor((Date.now() - readingStartTime) / 1000);
+                if (sessionTime > 0) {
+                    saveProgress(currentChapterId,0,sessionTime);
+                    readingStartTime = Date.now();
+                }
+            }
+        },30000);
+
+        // 章节缓存
+        const chapterCache = {
+            get: (novelId,chapterNum) => {
+                const key = `chapter_${novelId}_${chapterNum}`;
+                const cached = sessionStorage.getItem(key);
+                if (cached) {
+                    const data = JSON.parse(cached);
+                    // 检查缓存是否过期（30分钟）
+                    if (Date.now() - data.timestamp < 30 * 60 * 1000) {
+                        return data.chapter;
+                    }
+                    sessionStorage.removeItem(key);
+                }
+                return null;
+            },
+            set: (novelId,chapterNum,chapter) => {
+                const key = `chapter_${novelId}_${chapterNum}`;
+                sessionStorage.setItem(key,JSON.stringify({
+                    chapter,
+                    timestamp: Date.now()
+                }));
+            }
+        };
+
+        // 预加载下一章
+        async function preloadNextChapter() {
+            if (currentChapter >= totalChapters) return;
+
+            const nextChapterNum = currentChapter + 1;
+            // 检查是否已缓存
+            if (chapterCache.get(novelId,nextChapterNum)) return;
+
+            try {
+                const response = await fetch(`${API_URL}/novels/${novelId}/chapters/${nextChapterNum}`,{
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const chapter = await response.json();
+                    chapterCache.set(novelId,nextChapterNum,chapter);
+                    console.log(`预加载第${nextChapterNum}章成功`);
+                }
+            } catch (error) {
+                console.error('预加载失败',error);
+            }
+        }
+
+        if (!token) {
+            alert('请先登录');
+            location.href = 'login.html';
+        }
+
+        async function loadChapter() {
+            try {
+                // 显示加载状态
+                const contentDiv = document.getElementById('readerContent');
+                if (!chapterCache.get(novelId,currentChapter)) {
+                    contentDiv.innerHTML = '<div class="loading">加载中...</div>';
+                }
+
+                // 尝试从缓存加载
+                let chapter = chapterCache.get(novelId,currentChapter);
+                let novel;
+
+                if (chapter) {
+                    // 从缓存加载章节
+                    console.log(`从缓存加载第${currentChapter}章`);
+                    // 仍需获取小说信息
+                    const novelRes = await fetch(`${API_URL}/novels/${novelId}`,{
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    novel = await novelRes.json();
+                } else {
+                    // 从服务器加载
+                    const response = await fetch(`${API_URL}/novels/${novelId}/chapters/${currentChapter}`,{
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        contentDiv.innerHTML = `
+              <div class="error-box">
+                <h3>${escapeHtml(error.error)}</h3>
+                <p><a href="membership.html">立即开通会员</a></p>
+              </div>
+            `;
+                        return;
+                    }
+
+                    chapter = await response.json();
+                    // 缓存章节
+                    chapterCache.set(novelId,currentChapter,chapter);
+
+                    // 获取小说信息
+                    const novelRes = await fetch(`${API_URL}/novels/${novelId}`,{
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    novel = await novelRes.json();
+                }
+
+                totalChapters = novel.chapter_count;
+                currentChapterId = chapter.id;
+
+                // 显示章节内容
+                contentDiv.innerHTML = `
+          <div class="chapter-content">
+            <h2>${escapeHtml(chapter.title)}</h2>
+            <p class="chapter-meta">第${chapter.chapter_number}章 | ${chapter.word_count}字</p>
+            <div class="chapter-text">${escapeHtml(chapter.content).replace(/\n/g,'<br>')}</div>
+          </div>
+        `;
+
+                // 更新进度指示器
+                document.getElementById('progressIndicator').textContent = `第${currentChapter}章 / 共${totalChapters}章`;
+
+                // 更新按钮状态
+                document.getElementById('prevBtn').disabled = currentChapter <= 1;
+                document.getElementById('nextBtn').disabled = currentChapter >= totalChapters;
+
+                // 保存阅读进度
+                saveProgress(chapter.id);
+
+                // 滚动到顶部
+                window.scrollTo(0,0);
+
+                // 更新URL
+                history.replaceState(null,'',`reader.html?novelId=${novelId}&chapter=${currentChapter}`);
+
+                // 预加载下一章
+                setTimeout(preloadNextChapter,1000);
+
+                // 应用阅读设置
+                setTimeout(loadSettings,100);
+            } catch (error) {
+                document.getElementById('readerContent').innerHTML = `<p class="error">加载失败：${escapeHtml(error.message)}</p>`;
+            }
+        }
+
+        async function saveProgress(chapterId,scrollPos = 0,readingTime = 0) {
+            try {
+                await fetch(`${API_URL}/reading-progress`,{
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        novel_id: parseInt(novelId),
+                        chapter_id: chapterId,
+                        scroll_position: scrollPos,
+                        reading_time: readingTime
+                    })
+                });
+            } catch (error) {
+                console.error('保存进度失败',error);
+            }
+        }
+
+        function prevChapter() {
+            if (currentChapter > 1) {
+                currentChapter--;
+                loadChapter();
+            }
+        }
+
+        function nextChapter() {
+            if (currentChapter < totalChapters) {
+                currentChapter++;
+                loadChapter();
+            }
+        }
+
+        function backToNovel() {
+            location.href = `novel.html?id=${novelId}`;
+        }
+
+        // 监听滚动事件，自动保存进度
+        window.addEventListener('scroll',() => {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                const scrollPercent = Math.round((window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100);
+                saveProgress(currentChapterId,scrollPercent);
+            },2000);
+        });
+
+        // 键盘快捷键
+        document.addEventListener('keydown',(e) => {
+            if (e.key === 'ArrowLeft') prevChapter();
+            if (e.key === 'ArrowRight') nextChapter();
+        });
+
+        // 阅读设置功能
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.toggle('active');
+        }
+
+        function setFontSize(size) {
+            const chapterText = document.querySelector('.chapter-text');
+            if (!chapterText) return;
+
+            // 移除所有字体大小类
+            chapterText.classList.remove('font-small','font-medium','font-large','font-xlarge');
+            chapterText.classList.add(`font-${size}`);
+
+            // 更新按钮状态
+            const sizeLabels = { 'small': '小','medium': '中','large': '大','xlarge': '特大' };
+            document.querySelectorAll('.font-size-options button').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === sizeLabels[size]) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // 保存设置
+            localStorage.setItem('readerFontSize',size);
+        }
+
+        function toggleNightMode() {
+            const isNight = document.getElementById('nightMode').checked;
+            document.body.classList.toggle('night-mode',isNight);
+            localStorage.setItem('readerNightMode',isNight);
+        }
+
+        // 加载保存的设置
+        function loadSettings() {
+            // 加载字体大小
+            const savedFontSize = localStorage.getItem('readerFontSize') || 'medium';
+            const chapterText = document.querySelector('.chapter-text');
+            if (chapterText) {
+                chapterText.classList.add(`font-${savedFontSize}`);
+            }
+
+            // 更新字体大小按钮状态
+            document.querySelectorAll('.font-size-options button').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === { 'small': '小','medium': '中','large': '大','xlarge': '特大' }[savedFontSize]) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // 加载夜间模式
+            const savedNightMode = localStorage.getItem('readerNightMode') === 'true';
+            document.getElementById('nightMode').checked = savedNightMode;
+            if (savedNightMode) {
+                document.body.classList.add('night-mode');
+            }
+        }
+
+        // ========== 书签功能 ==========
+
+        function toggleBookmarkPanel() {
+            const panel = document.getElementById('bookmarkPanel');
+            panel.classList.toggle('active');
+            if (panel.classList.contains('active')) {
+                loadBookmarks();
+            }
+        }
+
+        async function addBookmark() {
+            const note = prompt('添加书签备注（可选）：');
+            if (note === null) return; // 用户取消
+
+            try {
+                const response = await fetch(`${API_URL}/bookmarks`,{
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        novel_id: parseInt(novelId),
+                        chapter_id: currentChapterId,
+                        chapter_number: currentChapter,
+                        note: note
+                    })
+                });
+
+                if (response.ok) {
+                    alert('书签已添加');
+                    loadBookmarks();
+                } else {
+                    alert('添加书签失败');
+                }
+            } catch (error) {
+                console.error('添加书签失败',error);
+            }
+        }
+
+        async function loadBookmarks() {
+            try {
+                const response = await fetch(`${API_URL}/bookmarks?novel_id=${novelId}`,{
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const bookmarks = await response.json();
+                const listDiv = document.getElementById('bookmarkList');
+
+                if (bookmarks.length === 0) {
+                    listDiv.innerHTML = '<p style="color:#999; text-align:center;">暂无书签</p>';
+                    return;
+                }
+
+                listDiv.innerHTML = bookmarks.map(b => `
+                    <div class="bookmark-item">
+                        <div class="bookmark-info" onclick="jumpToBookmark(${b.chapter_number})">
+                            <strong>第${b.chapter_number}章 ${escapeHtml(b.chapter_title)}</strong>
+                            ${b.note ? `<p class="bookmark-note">${escapeHtml(b.note)}</p>` : ''}
+                            <small>${new Date(b.created_at).toLocaleString()}</small>
+                        </div>
+                        <button class="delete-btn" onclick="deleteBookmark(${b.id}); event.stopPropagation();">删除</button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('加载书签失败',error);
+            }
+        }
+
+        function jumpToBookmark(chapterNumber) {
+            currentChapter = chapterNumber;
+            loadChapter();
+            toggleBookmarkPanel();
+        }
+
+        async function deleteBookmark(id) {
+            if (!confirm('确定删除此书签？')) return;
+
+            try {
+                await fetch(`${API_URL}/bookmarks/${id}`,{
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                loadBookmarks();
+            } catch (error) {
+                console.error('删除书签失败',error);
+            }
+        }
+
+        // ========== 评论功能 ==========
+
+        function toggleCommentPanel() {
+            const panel = document.getElementById('commentPanel');
+            panel.classList.toggle('active');
+            if (panel.classList.contains('active')) {
+                loadComments();
+            }
+        }
+
+        async function submitComment() {
+            const content = document.getElementById('commentInput').value.trim();
+            if (!content) {
+                alert('请输入评论内容');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/comments`,{
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        chapter_id: currentChapterId,
+                        content: content
+                    })
+                });
+
+                if (response.ok) {
+                    document.getElementById('commentInput').value = '';
+                    loadComments();
+                } else {
+                    alert('发表评论失败');
+                }
+            } catch (error) {
+                console.error('发表评论失败',error);
+            }
+        }
+
+        async function loadComments() {
+            try {
+                const response = await fetch(`${API_URL}/comments/${currentChapterId}`);
+                const comments = await response.json();
+                const listDiv = document.getElementById('commentList');
+
+                if (comments.length === 0) {
+                    listDiv.innerHTML = '<p style="color:#999; text-align:center; margin-top:20px;">暂无评论</p>';
+                    return;
+                }
+
+                listDiv.innerHTML = '<div class="comment-items">' + comments.map(c => `
+                    <div class="comment-item">
+                        <div class="comment-header">
+                            <strong>${escapeHtml(c.username)}</strong>
+                            <small>${new Date(c.created_at).toLocaleString()}</small>
+                        </div>
+                        <p class="comment-content">${escapeHtml(c.content)}</p>
+                        ${c.user_id === currentUserId ?
+                            `<button class="delete-btn" onclick="deleteComment(${c.id})">删除</button>` : ''}
+                    </div>
+                `).join('') + '</div>';
+            } catch (error) {
+                console.error('加载评论失败',error);
+            }
+        }
+
+        async function deleteComment(id) {
+            if (!confirm('确定删除此评论？')) return;
+
+            try {
+                await fetch(`${API_URL}/comments/${id}`,{
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                loadComments();
+            } catch (error) {
+                console.error('删除评论失败',error);
+            }
+        }
+
+        loadChapter();
+    </script>
+</body>
+
+</html>

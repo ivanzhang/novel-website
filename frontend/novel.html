@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小说详情 - 中文小说阅读网</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>📚 中文小说阅读网</h1>
+    <div class="nav">
+      <a href="index.html">返回首页</a>
+      <a href="membership.html">会员中心</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="novelDetail"></div>
+    <div id="chapterList"></div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+    const token = localStorage.getItem('token');
+    const urlParams = new URLSearchParams(window.location.search);
+    const novelId = urlParams.get('id');
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+
+    if (!token) {
+      alert('请先登录');
+      location.href = 'login.html';
+    }
+
+    async function loadNovelDetail() {
+      try {
+        const [novelRes, chaptersRes, progressRes, ratingsRes, userRatingRes] = await Promise.all([
+          fetch(`${API_URL}/novels/${novelId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${API_URL}/novels/${novelId}/chapters`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${API_URL}/reading-progress/${novelId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`${API_URL}/ratings/${novelId}`),
+          fetch(`${API_URL}/ratings/${novelId}/user`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+
+        if (!novelRes.ok) {
+          throw new Error('加载小说失败');
+        }
+
+        const novel = await novelRes.json();
+        const chapters = await chaptersRes.json();
+        const progress = progressRes.ok ? await progressRes.json() : null;
+        const ratings = await ratingsRes.json();
+        const userRating = await userRatingRes.json();
+
+        // 显示小说详情
+        document.getElementById('novelDetail').innerHTML = `
+          <div class="novel-header">
+            <h2>${escapeHtml(novel.title)}</h2>
+            <p class="novel-meta">作者：${escapeHtml(novel.author)} | 共${novel.chapter_count}章</p>
+
+            <!-- 评分显示 -->
+            <div class="rating-section">
+              <div class="rating-display">
+                <span class="rating-stars">${'★'.repeat(Math.round(ratings.average || 0))}${'☆'.repeat(5 - Math.round(ratings.average || 0))}</span>
+                <span class="rating-score">${(ratings.average || 0).toFixed(1)}</span>
+                <span class="rating-count">(${ratings.count}人评分)</span>
+              </div>
+              <div class="user-rating">
+                <span>我的评分：</span>
+                ${[1,2,3,4,5].map(star => `
+                  <span class="star ${userRating.rating >= star ? 'active' : ''}" onclick="rateNovel(${star})">★</span>
+                `).join('')}
+              </div>
+            </div>
+
+            ${novel.description ? `<p class="novel-description">${escapeHtml(novel.description)}</p>` : ''}
+            ${progress ?
+              `<button class="btn-primary" onclick="continueReading(${progress.chapter_number})">继续阅读（第${progress.chapter_number}章）</button>` :
+              `<button class="btn-primary" onclick="startReading()">开始阅读</button>`
+            }
+          </div>
+        `;
+
+        // 显示章节列表
+        const chapterListHTML = chapters.map(chapter => `
+          <div class="chapter-item ${chapter.needs_premium ? 'premium' : ''}" onclick="readChapter(${chapter.chapter_number})">
+            <span class="chapter-title">第${chapter.chapter_number}章 ${escapeHtml(chapter.title)}</span>
+            <span class="chapter-info">
+              ${chapter.needs_premium ? '<span class="lock-icon">🔒</span>' : '<span class="free-icon">✓</span>'}
+              ${chapter.word_count}字
+            </span>
+          </div>
+        `).join('');
+
+        document.getElementById('chapterList').innerHTML = `
+          <div class="chapter-list-container">
+            <h3>章节目录</h3>
+            <div class="chapter-list">${chapterListHTML}</div>
+          </div>
+        `;
+      } catch (error) {
+        document.getElementById('novelDetail').innerHTML = `<p class="error">加载失败：${escapeHtml(error.message)}</p>`;
+      }
+    }
+
+    function startReading() {
+      location.href = `reader.html?novelId=${novelId}&chapter=1`;
+    }
+
+    function continueReading(chapterNumber) {
+      location.href = `reader.html?novelId=${novelId}&chapter=${chapterNumber}`;
+    }
+
+    function readChapter(chapterNumber) {
+      location.href = `reader.html?novelId=${novelId}&chapter=${chapterNumber}`;
+    }
+
+    async function rateNovel(rating) {
+      try {
+        const response = await fetch(`${API_URL}/ratings`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            novel_id: parseInt(novelId),
+            rating: rating
+          })
+        });
+
+        if (response.ok) {
+          loadNovelDetail(); // 重新加载以更新评分
+        } else {
+          alert('评分失败');
+        }
+      } catch (error) {
+        console.error('评分失败', error);
+      }
+    }
+
+    loadNovelDetail();
+  </script>
+</body>
+</html>
