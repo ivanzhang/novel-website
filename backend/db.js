@@ -1,5 +1,5 @@
 const Database = require('better-sqlite3');
-const db = new Database('novels.db');
+const db = new Database(process.env.DB_PATH || 'novels.db');
 
 // 初始化数据库表
 db.exec(`
