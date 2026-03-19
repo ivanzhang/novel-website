@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 - 中文小说阅读网</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>📚 中文小说阅读网</h1>
+  </header>
+
+  <div class="form-container">
+    <h2>用户登录</h2>
+    <form id="loginForm">
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" id="username" required>
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="password" required>
+      </div>
+      <button type="submit" class="btn">登录</button>
+      <div id="message"></div>
+    </form>
+    <p style="text-align:center; margin-top:20px;">
+      还没有账号？<a href="#" onclick="toggleForm()">立即注册</a>
+    </p>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+    let isLogin = true;
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+
+    function toggleForm() {
+      isLogin = !isLogin;
+      document.querySelector('h2').textContent = isLogin ? '用户登录' : '用户注册';
+      document.querySelector('.btn').textContent = isLogin ? '登录' : '注册';
+      document.querySelector('p').innerHTML = isLogin
+        ? '还没有账号？<a href="#" onclick="toggleForm()">立即注册</a>'
+        : '已有账号？<a href="#" onclick="toggleForm()">立即登录</a>';
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const endpoint = isLogin ? '/login' : '/register';
+
+      try {
+        const response = await fetch(`${API_URL}${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          if (isLogin) {
+            localStorage.setItem('token', data.token);
+            location.href = 'index.html';
+          } else {
+            document.getElementById('message').innerHTML = '<p class="success">注册成功！请登录</p>';
+            setTimeout(() => toggleForm(), 1500);
+          }
+        } else {
+          document.getElementById('message').innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
+        }
+      } catch (error) {
+        document.getElementById('message').innerHTML = '<p class="error">网络错误，请稍后重试</p>';
+      }
+    });
+  </script>
+</body>
+</html>

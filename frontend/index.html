@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>中文小说阅读网</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>📚 中文小说阅读网</h1>
+    <div class="nav">
+      <a href="index.html">首页</a>
+      <a href="history.html" id="historyLink" style="display:none;">阅读历史</a>
+      <a href="membership.html">会员中心</a>
+      <a href="login.html" id="loginLink">登录</a>
+      <a href="#" id="logoutLink" style="display:none;">退出</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- 搜索框 -->
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="搜索小说标题或作者..." onkeyup="handleSearch(event)">
+      <button onclick="performSearch()">🔍 搜索</button>
+    </div>
+
+    <div id="searchResults"></div>
+    <div id="continueReading"></div>
+    <h2 id="novelListTitle">热门小说</h2>
+    <div class="novel-list" id="novelList"></div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+    const token = localStorage.getItem('token');
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+
+    if (token) {
+      document.getElementById('loginLink').style.display = 'none';
+      document.getElementById('logoutLink').style.display = 'block';
+      document.getElementById('historyLink').style.display = 'block';
+    }
+
+    document.getElementById('logoutLink').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      location.reload();
+    });
+
+    // 搜索功能
+    let searchTimeout;
+    function handleSearch(event) {
+      if (event.key === 'Enter') {
+        performSearch();
+        return;
+      }
+
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        const query = document.getElementById('searchInput').value.trim();
+        if (query.length >= 2) {
+          performSearch();
+        } else if (query.length === 0) {
+          clearSearch();
+        }
+      }, 500);
+    }
+
+    async function performSearch() {
+      const query = document.getElementById('searchInput').value.trim();
+      if (!query) {
+        clearSearch();
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`);
+        const results = await response.json();
+
+        const resultsDiv = document.getElementById('searchResults');
+        const novelListDiv = document.getElementById('novelList');
+        const titleDiv = document.getElementById('novelListTitle');
+
+        if (results.length === 0) {
+          resultsDiv.innerHTML = '<p class="no-results">未找到相关小说</p>';
+          novelListDiv.style.display = 'none';
+          titleDiv.style.display = 'none';
+          return;
+        }
+
+        resultsDiv.innerHTML = `
+          <h3>搜索结果 (${results.length})</h3>
+          <div class="novel-list">
+            ${results.map(novel => `
+              <div class="novel-card" onclick="viewNovel(${novel.id})">
+                <h3>${escapeHtml(novel.title)}${novel.is_premium ? '<span class="premium-badge">VIP</span>' : ''}</h3>
+                <p class="author">作者：${escapeHtml(novel.author)}</p>
+                ${novel.description ? `<p class="novel-desc">${escapeHtml(novel.description)}</p>` : ''}
+                <p class="chapter-count">${novel.chapter_count}章</p>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        novelListDiv.style.display = 'none';
+        titleDiv.style.display = 'none';
+      } catch (error) {
+        console.error('搜索失败', error);
+      }
+    }
+
+    function clearSearch() {
+      document.getElementById('searchResults').innerHTML = '';
+      document.getElementById('novelList').style.display = 'grid';
+      document.getElementById('novelListTitle').style.display = 'block';
+    }
+
+    async function loadContinueReading() {
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${API_URL}/reading-progress`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const progressList = await response.json();
+          if (progressList.length > 0) {
+            const continueReadingHTML = progressList.map(progress => `
+              <div class="continue-reading-card" onclick="continueReading(${progress.novel_id}, ${progress.chapter_number})">
+                <h4>${escapeHtml(progress.novel_title)}</h4>
+                <p class="reading-progress">上次读到：第${progress.chapter_number}章 ${escapeHtml(progress.chapter_title)}</p>
+                <p class="author">作者：${escapeHtml(progress.author)}</p>
+              </div>
+            `).join('');
+
+            document.getElementById('continueReading').innerHTML = `
+              <div class="continue-reading-section">
+                <h2>继续阅读</h2>
+                <div class="continue-reading-list">${continueReadingHTML}</div>
+              </div>
+            `;
+          }
+        }
+      } catch (error) {
+        console.error('加载阅读进度失败', error);
+      }
+    }
+
+    function continueReading(novelId, chapterNumber) {
+      location.href = `reader.html?novelId=${novelId}&chapter=${chapterNumber}`;
+    }
+
+    async function loadNovels() {
+      const response = await fetch(`${API_URL}/novels`);
+      const data = await response.json();
+      const novels = data.novels || data;
+
+      const novelList = document.getElementById('novelList');
+      novelList.innerHTML = novels.map(novel => `
+        <div class="novel-card" onclick="viewNovel(${novel.id})">
+          <h3>${escapeHtml(novel.title)}${novel.is_premium ? '<span class="premium-badge">VIP</span>' : ''}</h3>
+          <p class="author">作者：${escapeHtml(novel.author)}</p>
+        </div>
+      `).join('');
+    }
+
+    function viewNovel(id) {
+      if (!token) {
+        alert('请先登录');
+        location.href = 'login.html';
+        return;
+      }
+      location.href = `novel.html?id=${id}`;
+    }
+
+    loadContinueReading();
+    loadNovels();
+  </script>
+</body>
+</html>

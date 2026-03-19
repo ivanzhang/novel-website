@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>阅读历史 - 中文小说阅读网</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>📚 中文小说阅读网</h1>
+    <div class="nav">
+      <a href="index.html">返回首页</a>
+      <a href="membership.html">会员中心</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <h2>我的阅读历史</h2>
+    <div id="historyList"></div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+    const token = localStorage.getItem('token');
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+
+    if (!token) {
+      alert('请先登录');
+      location.href = 'login.html';
+    }
+
+    async function loadHistory() {
+      try {
+        const response = await fetch(`${API_URL}/reading-progress`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const history = await response.json();
+        const listDiv = document.getElementById('historyList');
+
+        if (history.length === 0) {
+          listDiv.innerHTML = '<p class="no-results">暂无阅读历史</p>';
+          return;
+        }
+
+        listDiv.innerHTML = history.map(item => {
+          const progress = Math.round((item.chapter_number / item.chapter_count) * 100) || 0;
+          const hours = Math.floor(item.reading_time / 3600);
+          const minutes = Math.floor((item.reading_time % 3600) / 60);
+          const timeStr = hours > 0 ? `${hours}小时${minutes}分钟` : `${minutes}分钟`;
+
+          return `
+            <div class="history-card" onclick="continueReading(${item.novel_id}, ${item.chapter_number})">
+              <div class="history-info">
+                <h3>${escapeHtml(item.novel_title)}</h3>
+                <p class="author">作者：${escapeHtml(item.author)}</p>
+                <p class="progress-text">上次读到：第${item.chapter_number}章 ${escapeHtml(item.chapter_title)}</p>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: ${progress}%"></div>
+                </div>
+                <p class="progress-percent">${progress}% | 已阅读 ${timeStr}</p>
+                <p class="last-read">最后阅读：${new Date(item.last_read_at).toLocaleString()}</p>
+              </div>
+              <button class="continue-btn">继续阅读</button>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('加载历史失败', error);
+        document.getElementById('historyList').innerHTML = '<p class="error">加载失败</p>';
+      }
+    }
+
+    function continueReading(novelId, chapterNumber) {
+      location.href = `reader.html?novelId=${novelId}&chapter=${chapterNumber}`;
+    }
+
+    loadHistory();
+  </script>
+</body>
+</html>
