@@ -1,3 +1,7 @@
+## 语言
+
+始终用中文回复我，包括所有解释、注释和提问。
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
