@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>中文小说阅读网</title>
+  <meta name="description" content="中文小说阅读网 — 免费在线阅读修仙、都市、玄幻等热门中文小说，干净无广告的阅读体验">
+  <meta property="og:title" content="中文小说阅读网">
+  <meta property="og:description" content="免费在线阅读热门中文小说，干净无广告的阅读体验">
+  <meta property="og:type" content="website">
+  <title>中文小说阅读网 — 免费在线阅读</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -70,6 +74,37 @@
       }, 500);
     }
 
+    // CSS 封面渐变色
+    const coverGradients = [
+      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+      'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+      'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+      'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+      'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)',
+      'linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)',
+    ];
+
+    function getCoverGradient(id) {
+      return coverGradients[(id - 1) % coverGradients.length];
+    }
+
+    function renderNovelCard(novel) {
+      const firstChar = novel.title.charAt(0);
+      return `
+        <div class="novel-card" onclick="viewNovel(${novel.id})">
+          <div class="novel-cover" style="background: ${getCoverGradient(novel.id)}">${escapeHtml(firstChar)}</div>
+          <div class="novel-card-info">
+            <h3>${escapeHtml(novel.title)}${novel.is_premium ? '<span class="premium-badge">VIP</span>' : ''}</h3>
+            <p class="author">作者：${escapeHtml(novel.author)}</p>
+            ${novel.description ? `<p class="novel-desc">${escapeHtml(novel.description)}</p>` : ''}
+            ${novel.chapter_count ? `<p class="chapter-count">${novel.chapter_count}章</p>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
     async function performSearch() {
       const query = document.getElementById('searchInput').value.trim();
       if (!query) {
@@ -95,14 +130,7 @@
         resultsDiv.innerHTML = `
           <h3>搜索结果 (${results.length})</h3>
           <div class="novel-list">
-            ${results.map(novel => `
-              <div class="novel-card" onclick="viewNovel(${novel.id})">
-                <h3>${escapeHtml(novel.title)}${novel.is_premium ? '<span class="premium-badge">VIP</span>' : ''}</h3>
-                <p class="author">作者：${escapeHtml(novel.author)}</p>
-                ${novel.description ? `<p class="novel-desc">${escapeHtml(novel.description)}</p>` : ''}
-                <p class="chapter-count">${novel.chapter_count}章</p>
-              </div>
-            `).join('')}
+            ${results.map(novel => renderNovelCard(novel)).join('')}
           </div>
         `;
         novelListDiv.style.display = 'none';
@@ -160,20 +188,10 @@
       const novels = data.novels || data;
 
       const novelList = document.getElementById('novelList');
-      novelList.innerHTML = novels.map(novel => `
-        <div class="novel-card" onclick="viewNovel(${novel.id})">
-          <h3>${escapeHtml(novel.title)}${novel.is_premium ? '<span class="premium-badge">VIP</span>' : ''}</h3>
-          <p class="author">作者：${escapeHtml(novel.author)}</p>
-        </div>
-      `).join('');
+      novelList.innerHTML = novels.map(novel => renderNovelCard(novel)).join('');
     }
 
     function viewNovel(id) {
-      if (!token) {
-        alert('请先登录');
-        location.href = 'login.html';
-        return;
-      }
       location.href = `novel.html?id=${id}`;
     }
 
