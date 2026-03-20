@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="在线阅读中文小说">
+  <meta property="og:type" content="book">
   <title>小说详情 - 中文小说阅读网</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -32,37 +34,58 @@
     }
 
     if (!token) {
-      alert('请先登录');
-      location.href = 'login.html';
+      // 未登录也可以查看小说详情，但不能查看章节列表
     }
 
     async function loadNovelDetail() {
       try {
-        const [novelRes, chaptersRes, progressRes, ratingsRes, userRatingRes] = await Promise.all([
-          fetch(`${API_URL}/novels/${novelId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          fetch(`${API_URL}/novels/${novelId}/chapters`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          fetch(`${API_URL}/reading-progress/${novelId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          fetch(`${API_URL}/ratings/${novelId}`),
-          fetch(`${API_URL}/ratings/${novelId}/user`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-        ]);
+        // 小说详情和评分是公开的
+        const requests = [
+          fetch(`${API_URL}/novels/${novelId}`),
+          fetch(`${API_URL}/ratings/${novelId}`)
+        ];
+
+        // 需要登录的请求
+        if (token) {
+          requests.push(
+            fetch(`${API_URL}/novels/${novelId}/chapters`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            fetch(`${API_URL}/reading-progress/${novelId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            fetch(`${API_URL}/ratings/${novelId}/user`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+          );
+        }
+
+        const responses = await Promise.all(requests);
+        const [novelRes, ratingsRes] = responses;
 
         if (!novelRes.ok) {
           throw new Error('加载小说失败');
         }
 
         const novel = await novelRes.json();
-        const chapters = await chaptersRes.json();
-        const progress = progressRes.ok ? await progressRes.json() : null;
         const ratings = await ratingsRes.json();
-        const userRating = await userRatingRes.json();
+
+        let chapters = [];
+        let progress = null;
+        let userRating = { rating: 0 };
+
+        if (token && responses.length > 2) {
+          chapters = responses[2].ok ? await responses[2].json() : [];
+          progress = responses[3].ok ? await responses[3].json() : null;
+          userRating = responses[4].ok ? await responses[4].json() : { rating: 0 };
+        }
+
+        // 更新页面标题和 SEO
+        document.title = `${novel.title} - 中文小说阅读网`;
+        document.querySelector('meta[name="description"]').content = novel.description || `在线阅读《${novel.title}》`;
+        document.querySelector('meta[property="og:type"]').insertAdjacentHTML('afterend',
+          `<meta property="og:title" content="${escapeHtml(novel.title)} - 中文小说阅读网">`);
+
 
         // 显示小说详情
         document.getElementById('novelDetail').innerHTML = `
@@ -77,39 +100,52 @@
                 <span class="rating-score">${(ratings.average || 0).toFixed(1)}</span>
                 <span class="rating-count">(${ratings.count}人评分)</span>
               </div>
-              <div class="user-rating">
+              ${token ? `<div class="user-rating">
                 <span>我的评分：</span>
                 ${[1,2,3,4,5].map(star => `
                   <span class="star ${userRating.rating >= star ? 'active' : ''}" onclick="rateNovel(${star})">★</span>
                 `).join('')}
-              </div>
+              </div>` : ''}
             </div>
 
             ${novel.description ? `<p class="novel-description">${escapeHtml(novel.description)}</p>` : ''}
-            ${progress ?
-              `<button class="btn-primary" onclick="continueReading(${progress.chapter_number})">继续阅读（第${progress.chapter_number}章）</button>` :
-              `<button class="btn-primary" onclick="startReading()">开始阅读</button>`
+            ${!token ?
+              `<button class="btn-primary" onclick="location.href='login.html'">登录后开始阅读</button>` :
+              progress ?
+                `<button class="btn-primary" onclick="continueReading(${progress.chapter_number})">继续阅读（第${progress.chapter_number}章）</button>` :
+                `<button class="btn-primary" onclick="startReading()">开始阅读</button>`
             }
           </div>
         `;
 
         // 显示章节列表
-        const chapterListHTML = chapters.map(chapter => `
-          <div class="chapter-item ${chapter.needs_premium ? 'premium' : ''}" onclick="readChapter(${chapter.chapter_number})">
-            <span class="chapter-title">第${chapter.chapter_number}章 ${escapeHtml(chapter.title)}</span>
-            <span class="chapter-info">
-              ${chapter.needs_premium ? '<span class="lock-icon">🔒</span>' : '<span class="free-icon">✓</span>'}
-              ${chapter.word_count}字
-            </span>
-          </div>
-        `).join('');
+        if (!token) {
+          document.getElementById('chapterList').innerHTML = `
+            <div class="chapter-list-container">
+              <h3>章节目录</h3>
+              <p style="color:#7f8c8d; text-align:center; padding:20px;">
+                <a href="login.html" style="color:#3498db;">登录</a> 后查看章节目录
+              </p>
+            </div>
+          `;
+        } else {
+          const chapterListHTML = chapters.map(chapter => `
+            <div class="chapter-item ${chapter.needs_premium ? 'premium' : ''}" onclick="readChapter(${chapter.chapter_number})">
+              <span class="chapter-title">第${chapter.chapter_number}章 ${escapeHtml(chapter.title)}</span>
+              <span class="chapter-info">
+                ${chapter.needs_premium ? '<span class="lock-icon">🔒</span>' : '<span class="free-icon">✓</span>'}
+                ${chapter.word_count}字
+              </span>
+            </div>
+          `).join('');
 
-        document.getElementById('chapterList').innerHTML = `
-          <div class="chapter-list-container">
-            <h3>章节目录</h3>
-            <div class="chapter-list">${chapterListHTML}</div>
-          </div>
-        `;
+          document.getElementById('chapterList').innerHTML = `
+            <div class="chapter-list-container">
+              <h3>章节目录</h3>
+              <div class="chapter-list">${chapterListHTML}</div>
+            </div>
+          `;
+        }
       } catch (error) {
         document.getElementById('novelDetail').innerHTML = `<p class="error">加载失败：${escapeHtml(error.message)}</p>`;
       }
@@ -128,6 +164,11 @@
     }
 
     async function rateNovel(rating) {
+      if (!token) {
+        alert('请先登录');
+        location.href = 'login.html';
+        return;
+      }
       try {
         const response = await fetch(`${API_URL}/ratings`, {
           method: 'POST',
