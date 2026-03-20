@@ -1,10 +1,14 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ## 语言
 
 始终用中文回复我，包括所有解释、注释和提问。
 
-# CLAUDE.md
+## gstack
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+所有 gstack skill 的输出使用中文。
 
 ## Project Overview
 
