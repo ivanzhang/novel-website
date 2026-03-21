@@ -14,6 +14,7 @@ function createTestDb() {
   class BetterSqlite3Compat {
     constructor(filename) {
       this.db = new DatabaseSync(filename);
+      this.transactionDepth = 0;
     }
 
     pragma(statement) {
@@ -32,6 +33,48 @@ function createTestDb() {
         run: (...params) => statement.run(...params),
         get: (...params) => statement.get(...params),
         all: (...params) => statement.all(...params),
+      };
+    }
+
+    transaction(fn) {
+      const db = this;
+
+      return function transactionWrapper(...args) {
+        const depth = db.transactionDepth;
+        const savepointName = `sp_${depth + 1}`;
+        const outerTransaction = depth === 0;
+
+        if (outerTransaction) {
+          db.db.exec('BEGIN');
+        } else {
+          db.db.exec(`SAVEPOINT ${savepointName}`);
+        }
+
+        db.transactionDepth += 1;
+
+        try {
+          const result = fn.apply(this, args);
+          db.transactionDepth -= 1;
+
+          if (outerTransaction) {
+            db.db.exec('COMMIT');
+          } else {
+            db.db.exec(`RELEASE SAVEPOINT ${savepointName}`);
+          }
+
+          return result;
+        } catch (error) {
+          db.transactionDepth -= 1;
+
+          if (outerTransaction) {
+            db.db.exec('ROLLBACK');
+          } else {
+            db.db.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`);
+            db.db.exec(`RELEASE SAVEPOINT ${savepointName}`);
+          }
+
+          throw error;
+        }
       };
     }
 

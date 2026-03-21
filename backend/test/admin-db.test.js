@@ -153,3 +153,29 @@ test('db 初始化应迁移旧的 source_records 单列唯一索引', () => {
     }
   });
 });
+
+test('测试数据库 shim 应支持 transaction 回滚', () => {
+  const db = createTestDb();
+  try {
+    db.exec('CREATE TABLE tx_items (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT NOT NULL)');
+
+    const insertTxItem = db.transaction((value, shouldFail = false) => {
+      db.prepare('INSERT INTO tx_items (value) VALUES (?)').run(value);
+      if (shouldFail) {
+        throw new Error('rollback');
+      }
+      return value.toUpperCase();
+    });
+
+    assert.equal(insertTxItem('a'), 'A');
+
+    assert.throws(() => {
+      insertTxItem('b', true);
+    }, /rollback/);
+
+    const rows = db.prepare('SELECT value FROM tx_items ORDER BY id').all();
+    assert.deepEqual(rows.map((row) => row.value), ['a']);
+  } finally {
+    db.close();
+  }
+});
