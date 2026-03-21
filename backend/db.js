@@ -115,8 +115,7 @@ db.exec(`
     source_type TEXT NOT NULL DEFAULT 'novel',
     raw_data TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(source_type, source_key)
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS import_items (
@@ -158,6 +157,7 @@ db.exec(`
 
 // 创建索引
 db.exec(`
+  DROP INDEX IF EXISTS idx_source_records_source_key;
   CREATE INDEX IF NOT EXISTS idx_chapters_novel_id ON chapters(novel_id);
   CREATE INDEX IF NOT EXISTS idx_chapters_novel_chapter ON chapters(novel_id, chapter_number);
   CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
@@ -167,6 +167,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_ratings_novel ON ratings(novel_id);
   CREATE INDEX IF NOT EXISTS idx_import_items_job_id ON import_items(job_id);
   CREATE INDEX IF NOT EXISTS idx_import_items_source_record_id ON import_items(source_record_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_source_records_source_type_source_key ON source_records(source_type, source_key);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
   CREATE INDEX IF NOT EXISTS idx_novel_aliases_novel_id ON novel_aliases(novel_id);

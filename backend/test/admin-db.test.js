@@ -1,7 +1,40 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { DatabaseSync } = require('node:sqlite');
 
 const { createTestDb } = require('./helpers/test-db');
+
+function withLegacySourceRecordSchema(callback) {
+  const originalMkdtempSync = fs.mkdtempSync;
+
+  fs.mkdtempSync = (prefix) => {
+    const tempDir = originalMkdtempSync(prefix);
+    const legacyDb = new DatabaseSync(path.join(tempDir, 'test.db'));
+
+    legacyDb.exec(`
+      CREATE TABLE source_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_key TEXT NOT NULL,
+        source_type TEXT NOT NULL DEFAULT 'novel',
+        raw_data TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE UNIQUE INDEX idx_source_records_source_key ON source_records(source_key);
+    `);
+    legacyDb.close();
+
+    return tempDir;
+  };
+
+  try {
+    return callback();
+  } finally {
+    fs.mkdtempSync = originalMkdtempSync;
+  }
+}
 
 test('db 初始化应创建后台导入相关表', () => {
   const db = createTestDb();
@@ -83,6 +116,7 @@ test('db 初始化应创建后台导入相关索引', () => {
 
     assert.ok(indexNames.includes('idx_import_items_job_id'));
     assert.ok(indexNames.includes('idx_import_items_source_record_id'));
+    assert.ok(indexNames.includes('idx_source_records_source_type_source_key'));
     assert.ok(indexNames.includes('idx_categories_name'));
     assert.ok(indexNames.includes('idx_tags_name'));
     assert.ok(indexNames.includes('idx_novel_aliases_novel_id'));
@@ -99,4 +133,23 @@ test('db 初始化应创建后台导入相关索引', () => {
   } finally {
     db.close();
   }
+});
+
+test('db 初始化应迁移旧的 source_records 单列唯一索引', () => {
+  withLegacySourceRecordSchema(() => {
+    const db = createTestDb();
+    try {
+      db.prepare(
+        'INSERT INTO source_records (source_type, source_key, raw_data) VALUES (?, ?, ?)'
+      ).run('novel', '2530', '{"title":"万相之王"}');
+
+      assert.doesNotThrow(() => {
+        db.prepare(
+          'INSERT INTO source_records (source_type, source_key, raw_data) VALUES (?, ?, ?)'
+        ).run('biquge', '2530', '{"title":"另一部作品"}');
+      });
+    } finally {
+      db.close();
+    }
+  });
 });
