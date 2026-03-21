@@ -1,5 +1,4 @@
 const fs = require('node:fs');
-const Module = require('node:module');
 const os = require('node:os');
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
@@ -9,7 +8,8 @@ function createTestDb() {
   const dbPath = path.join(tempDir, 'test.db');
   const previousDbPath = process.env.DB_PATH;
   const dbModulePath = path.resolve(__dirname, '../../db.js');
-  const originalLoad = Module._load;
+  const betterSqlite3ModulePath = require.resolve('better-sqlite3');
+  const previousBetterSqlite3Module = require.cache[betterSqlite3ModulePath];
 
   class BetterSqlite3Compat {
     constructor(filename) {
@@ -44,17 +44,35 @@ function createTestDb() {
   delete require.cache[dbModulePath];
 
   try {
-    Module._load = function patchedLoad(request, parent, isMain) {
-      if (request === 'better-sqlite3') {
-        return BetterSqlite3Compat;
-      }
-
-      return originalLoad.call(this, request, parent, isMain);
+    require.cache[betterSqlite3ModulePath] = {
+      id: betterSqlite3ModulePath,
+      filename: betterSqlite3ModulePath,
+      loaded: true,
+      exports: BetterSqlite3Compat,
     };
 
-    return require(dbModulePath);
+    let db;
+    try {
+      db = require(dbModulePath);
+    } catch (error) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+      throw error;
+    }
+
+    const close = db.close.bind(db);
+
+    db.close = () => {
+      close();
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    };
+
+    return db;
   } finally {
-    Module._load = originalLoad;
+    if (previousBetterSqlite3Module === undefined) {
+      delete require.cache[betterSqlite3ModulePath];
+    } else {
+      require.cache[betterSqlite3ModulePath] = previousBetterSqlite3Module;
+    }
 
     if (previousDbPath === undefined) {
       delete process.env.DB_PATH;
