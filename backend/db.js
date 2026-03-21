@@ -3,6 +3,7 @@ const db = new Database(process.env.DB_PATH || 'novels.db');
 
 // 启用 WAL 模式提升并发性能
 db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 
 // 初始化数据库表
 db.exec(`
@@ -96,6 +97,62 @@ db.exec(`
     FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
     UNIQUE(user_id, novel_id)
   );
+
+  CREATE TABLE IF NOT EXISTS import_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    started_at DATETIME,
+    finished_at DATETIME,
+    error_message TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS source_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_key TEXT NOT NULL,
+    source_type TEXT NOT NULL DEFAULT 'novel',
+    raw_data TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS import_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id INTEGER NOT NULL,
+    source_record_id INTEGER NOT NULL,
+    item_type TEXT NOT NULL DEFAULT 'novel',
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (job_id) REFERENCES import_jobs(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_record_id) REFERENCES source_records(id) ON DELETE CASCADE,
+    UNIQUE(job_id, source_record_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS novel_aliases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    novel_id INTEGER NOT NULL,
+    alias TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
+    UNIQUE(novel_id, alias)
+  );
 `);
 
 // 创建索引
@@ -107,6 +164,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks(user_id);
   CREATE INDEX IF NOT EXISTS idx_comments_chapter ON comments(chapter_id);
   CREATE INDEX IF NOT EXISTS idx_ratings_novel ON ratings(novel_id);
+  CREATE INDEX IF NOT EXISTS idx_import_items_job_id ON import_items(job_id);
+  CREATE INDEX IF NOT EXISTS idx_import_items_source_record_id ON import_items(source_record_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_source_records_source_key ON source_records(source_key);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
+  CREATE INDEX IF NOT EXISTS idx_novel_aliases_novel_id ON novel_aliases(novel_id);
 `);
 
 module.exports = db;
