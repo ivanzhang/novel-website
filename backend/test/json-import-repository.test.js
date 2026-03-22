@@ -151,6 +151,30 @@ test('findNovelForImport 在没有 source_book_id 时应回退到 title + author
   }
 });
 
+test('findNovelForImport 在 title + author 回退命中多条时应抛错拒绝更新', () => {
+  const db = createTestDb();
+  try {
+    seedNovel(db, {
+      title: '万相之王',
+      author: '天蚕土豆',
+    });
+    seedNovel(db, {
+      title: '万相之王 最新章节 无弹窗',
+      author: '天蚕土豆著',
+    });
+
+    const { findNovelForImport } = loadRepository();
+
+    assert.throws(() => findNovelForImport({
+      source_site: 'https://0732.bqg291.cc',
+      title: '万相之王',
+      author: '天蚕土豆',
+    }), /title \+ author 回退命中多条已有小说/);
+  } finally {
+    db.close();
+  }
+});
+
 test('upsertNovel 应覆盖更新已有小说元数据', () => {
   const db = createTestDb();
   try {
@@ -194,6 +218,40 @@ test('upsertNovel 应覆盖更新已有小说元数据', () => {
     assert.equal(updated.primary_category, '仙侠');
     assert.equal(updated.cover_url, 'https://www.bqg291.cc/bookimg/2/2530.jpg');
     assert.equal(updated.content_storage, 'json');
+  } finally {
+    db.close();
+  }
+});
+
+test('upsertNovel 通过 title + author 回退命中时应保留旧来源键', () => {
+  const db = createTestDb();
+  try {
+    const novelId = seedNovel(db, {
+      title: '万相之王',
+      author: '天蚕土豆',
+      source_site: 'https://0732.bqg291.cc',
+      source_book_id: '2530',
+      description: '旧简介',
+    });
+
+    const { upsertNovel } = loadRepository();
+    const returnedId = upsertNovel({
+      title: '万相之王 最新章节 无弹窗',
+      author: '天蚕土豆著',
+      description: '天地间有万相',
+      chapterCount: 1837,
+      freeChapters: 12,
+      content_storage: 'json',
+    });
+
+    assert.equal(returnedId, novelId);
+
+    const updated = db.prepare('SELECT * FROM novels WHERE id = ?').get(novelId);
+    assert.equal(updated.source_site, 'https://0732.bqg291.cc');
+    assert.equal(updated.source_book_id, '2530');
+    assert.equal(updated.title, '万相之王 最新章节 无弹窗');
+    assert.equal(updated.author, '天蚕土豆著');
+    assert.equal(updated.description, '天地间有万相');
   } finally {
     db.close();
   }

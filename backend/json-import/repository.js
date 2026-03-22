@@ -21,6 +21,14 @@ function getRecordField(record, snakeName, camelName) {
   return undefined;
 }
 
+function hasExplicitRecordField(record, snakeName, camelName) {
+  return record
+    && (
+      Object.prototype.hasOwnProperty.call(record, snakeName)
+      || Object.prototype.hasOwnProperty.call(record, camelName)
+    );
+}
+
 function getSourceSite(record = {}) {
   return trimText(getRecordField(record, 'source_site', 'site'));
 }
@@ -54,19 +62,30 @@ function findNovelForImport(record = {}) {
   }
 
   const novels = db.prepare('SELECT * FROM novels').all();
+  const matches = [];
 
   for (const novel of novels) {
     if (getNormalizedNovelKey(novel) === targetKey) {
-      return novel;
+      matches.push(novel);
     }
   }
 
-  return null;
+  if (matches.length === 0) {
+    return null;
+  }
+
+  if (matches.length > 1) {
+    throw new Error('title + author 回退命中多条已有小说，拒绝更新');
+  }
+
+  return matches[0];
 }
 
 function getNovelValues(record = {}) {
-  const sourceSite = getSourceSite(record) || null;
-  const sourceBookId = getSourceBookId(record) || null;
+  const hasSourceSite = hasExplicitRecordField(record, 'source_site', 'site');
+  const hasSourceBookId = hasExplicitRecordField(record, 'source_book_id', 'bookId');
+  const sourceSite = hasSourceSite ? (getSourceSite(record) || null) : undefined;
+  const sourceBookId = hasSourceBookId ? (getSourceBookId(record) || null) : undefined;
   const title = trimText(record.title);
   const author = trimText(record.author);
   const description = trimText(getRecordField(record, 'description', 'description'));
@@ -120,16 +139,16 @@ function upsertNovel(record = {}) {
       WHERE id = ?
     `).run(
       values.title,
-      values.author,
-      values.isPremium,
-      values.chapterCount,
-      values.description,
-      values.freeChapters,
-      values.sourceSite,
-      values.sourceBookId,
-      values.sourceCategory,
-      values.primaryCategory,
-      values.coverUrl,
+    values.author,
+    values.isPremium,
+    values.chapterCount,
+    values.description,
+    values.freeChapters,
+    values.sourceSite ?? existing.source_site,
+    values.sourceBookId ?? existing.source_book_id,
+    values.sourceCategory,
+    values.primaryCategory,
+    values.coverUrl,
       values.contentStorage,
       existing.id
     );
