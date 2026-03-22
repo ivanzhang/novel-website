@@ -8,7 +8,9 @@ const { createTestDb } = require('./helpers/test-db');
 
 function loadImporter() {
   const importerPath = path.resolve(__dirname, '../import-biquge-json.js');
+  const repositoryPath = path.resolve(__dirname, '../json-import/repository.js');
   delete require.cache[importerPath];
+  delete require.cache[repositoryPath];
   return require('../import-biquge-json');
 }
 
@@ -186,6 +188,92 @@ test('importBiqugeJson 应该扫描 books 和 chapters、写入摘要并返回�
     ).get('9999', 1);
     assert.equal(chapter9999.content_file_path, 'chapters/9999/1.json');
     assert.equal(chapter9999.content_preview, '新书正文');
+  } finally {
+    db.close();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('importBiqugeJson 应该把已有章节正文清空并更新文件路径与摘要', async () => {
+  const db = createTestDb();
+  const root = await createTempRoot();
+
+  try {
+    const novelId = db.prepare(`
+      INSERT INTO novels (
+        title,
+        author,
+        content,
+        is_premium,
+        chapter_count,
+        description,
+        free_chapters,
+        source_site,
+        source_book_id,
+        source_category,
+        primary_category,
+        cover_url,
+        content_storage
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      '旧标题',
+      '旧作者',
+      '',
+      0,
+      1,
+      '',
+      0,
+      'https://0732.bqg291.cc',
+      '2530',
+      null,
+      null,
+      null,
+      'json'
+    ).lastInsertRowid;
+
+    db.prepare(`
+      INSERT INTO chapters (
+        novel_id,
+        chapter_number,
+        title,
+        content,
+        is_premium,
+        word_count,
+        source_chapter_id,
+        content_file_path,
+        content_preview
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      novelId,
+      1,
+      '旧章节标题',
+      '旧的大正文内容',
+      0,
+      9,
+      null,
+      'legacy/1.json',
+      '旧摘要'
+    );
+
+    const { importBiqugeJson } = loadImporter();
+    const result = await importBiqugeJson({ root });
+
+    assert.deepEqual(result, {
+      total: 2,
+      added: 1,
+      updated: 1,
+      failed: 0,
+      missingContentFiles: 1,
+    });
+
+    const chapter2530 = db.prepare(
+      'SELECT chapter_number, title, content, content_file_path, content_preview FROM chapters WHERE novel_id = ? AND chapter_number = ?'
+    ).get(novelId, 1);
+
+    assert.equal(chapter2530.title, '第1章 我有三个相宫');
+    assert.equal(chapter2530.content, '');
+    assert.equal(chapter2530.content_file_path, 'chapters/2530/1.json');
+    assert.equal(chapter2530.content_preview, '第一段 第二段 第三段');
   } finally {
     db.close();
     await fs.rm(root, { recursive: true, force: true });
