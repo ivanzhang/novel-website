@@ -152,3 +152,48 @@ test('normalizeChapterRecord 应生成章节相对路径和摘要', () => {
     fetchedAt: '2026-03-21T19:50:00+08:00',
   });
 });
+
+test('normalizeChapterRecord 应拒绝非法 chapterNumber', () => {
+  const baseBook = {
+    site: 'https://0732.bqg291.cc',
+    bookId: '2530',
+    title: '万相之王',
+    author: '天蚕土豆',
+  };
+
+  assert.throws(
+    () => normalizeChapterRecord(baseBook, {
+      ...baseBook,
+      chapterNumber: undefined,
+      title: '第1章 我有三个相宫',
+    }),
+    /chapterNumber 必须是数字字符串/
+  );
+
+  assert.throws(
+    () => normalizeChapterRecord(baseBook, {
+      ...baseBook,
+      chapterNumber: '',
+      title: '第1章 我有三个相宫',
+    }),
+    /chapterNumber 必须是数字字符串/
+  );
+
+  assert.throws(
+    () => normalizeChapterRecord(baseBook, {
+      ...baseBook,
+      chapterNumber: null,
+      title: '第1章 我有三个相宫',
+    }),
+    /chapterNumber 必须是数字字符串/
+  );
+
+  assert.throws(
+    () => normalizeChapterRecord(baseBook, {
+      ...baseBook,
+      chapterNumber: '01a',
+      title: '第1章 我有三个相宫',
+    }),
+    /chapterNumber 必须是数字字符串/
+  );
+});

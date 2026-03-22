@@ -84,7 +84,7 @@ function normalizeBookRecord(bookJson = {}) {
 
 function normalizeChapterRecord(bookJson = {}, chapterJson = {}) {
   const bookId = toText(chapterJson.bookId || bookJson.bookId);
-  const chapterNumber = Number(chapterJson.chapterNumber) || 0;
+  const chapterNumber = Number(ensureNumericId(chapterJson.chapterNumber, 'chapterNumber'));
 
   return {
     site: toText(chapterJson.site || bookJson.site),
