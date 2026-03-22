@@ -70,6 +70,10 @@ function seedChapter(db, chapter) {
   ).lastInsertRowid;
 }
 
+function seedUser(db, username) {
+  return db.prepare('INSERT INTO users (username, password) VALUES (?, ?)').run(username, 'secret').lastInsertRowid;
+}
+
 test('findNovelForImport 应优先按 source_site + source_book_id 查找已有小说', () => {
   const db = createTestDb();
   try {
@@ -326,6 +330,95 @@ test('replaceChapters 应删除旧章节并重建目录', () => {
 
     const novel = db.prepare('SELECT chapter_count FROM novels WHERE id = ?').get(novelId);
     assert.equal(novel.chapter_count, 2);
+  } finally {
+    db.close();
+  }
+});
+
+test('replaceChapters 应按 chapter_number 同步并保留关联的 chapter_id', () => {
+  const db = createTestDb();
+  try {
+    const userId = seedUser(db, 'reader-1');
+    const novelId = seedNovel(db, {
+      title: '万相之王',
+      author: '天蚕土豆',
+      chapter_count: 2,
+    });
+
+    const chapter1Id = seedChapter(db, {
+      novel_id: novelId,
+      chapter_number: 1,
+      title: '旧第一章',
+      content: '旧正文 1',
+      content_file_path: 'legacy/1.json',
+      content_preview: '旧预览 1',
+    });
+    seedChapter(db, {
+      novel_id: novelId,
+      chapter_number: 2,
+      title: '旧第二章',
+      content: '旧正文 2',
+      content_file_path: 'legacy/2.json',
+      content_preview: '旧预览 2',
+    });
+
+    db.prepare(`
+      INSERT INTO reading_progress (user_id, novel_id, chapter_id, scroll_position, reading_time)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, novelId, chapter1Id, 88, 123);
+
+    const { replaceChapters } = loadRepository();
+    replaceChapters(novelId, [
+      {
+        chapter_number: 1,
+        title: '第1章 我有三个相宫',
+        source_chapter_id: '1',
+        content_file_path: 'chapters/2530/1.json',
+        content_preview: '第一段 第二段',
+      },
+      {
+        chapter_number: 3,
+        title: '第3章 新章节',
+        source_chapter_id: '3',
+        content_file_path: 'chapters/2530/3.json',
+        content_preview: '第三段 第四段',
+      },
+    ]);
+
+    const chapter1 = db.prepare(
+      'SELECT id, chapter_number, title, source_chapter_id, content_file_path, content_preview FROM chapters WHERE novel_id = ? AND chapter_number = ?'
+    ).get(novelId, 1);
+
+    assert.equal(chapter1.id, chapter1Id);
+    assert.equal(chapter1.title, '第1章 我有三个相宫');
+    assert.equal(chapter1.source_chapter_id, '1');
+    assert.equal(chapter1.content_file_path, 'chapters/2530/1.json');
+    assert.equal(chapter1.content_preview, '第一段 第二段');
+
+    const chapter3 = db.prepare(
+      'SELECT chapter_number, title, source_chapter_id, content_file_path, content_preview FROM chapters WHERE novel_id = ? AND chapter_number = ?'
+    ).get(novelId, 3);
+
+    assert.deepEqual({ ...chapter3 }, {
+      chapter_number: 3,
+      title: '第3章 新章节',
+      source_chapter_id: '3',
+      content_file_path: 'chapters/2530/3.json',
+      content_preview: '第三段 第四段',
+    });
+
+    const removedChapter = db.prepare(
+      'SELECT id FROM chapters WHERE novel_id = ? AND chapter_number = ?'
+    ).get(novelId, 2);
+    assert.equal(removedChapter, undefined);
+
+    const progress = db.prepare(
+      'SELECT id, user_id, novel_id, chapter_id, scroll_position, reading_time FROM reading_progress WHERE user_id = ? AND novel_id = ?'
+    ).get(userId, novelId);
+
+    assert.equal(progress.chapter_id, chapter1Id);
+    assert.equal(progress.scroll_position, 88);
+    assert.equal(progress.reading_time, 123);
   } finally {
     db.close();
   }

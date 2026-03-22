@@ -213,7 +213,33 @@ function replaceChapters(novelId, chapterRecords = []) {
     .map((chapterRecord) => normalizeChapterRecord(chapterRecord))
     .sort((a, b) => a.chapterNumber - b.chapterNumber);
 
-  db.prepare('DELETE FROM chapters WHERE novel_id = ?').run(novelId);
+  const seenChapterNumbers = new Set();
+
+  for (const chapter of normalizedRecords) {
+    if (seenChapterNumbers.has(chapter.chapterNumber)) {
+      throw new Error('chapter_number 不能重复');
+    }
+
+    seenChapterNumbers.add(chapter.chapterNumber);
+  }
+
+  const existingChapters = db.prepare(
+    'SELECT id, chapter_number FROM chapters WHERE novel_id = ?'
+  ).all(novelId);
+  const existingChapterMap = new Map(existingChapters.map((chapter) => [chapter.chapter_number, chapter]));
+
+  const updateChapter = db.prepare(`
+    UPDATE chapters
+    SET
+      title = ?,
+      content = ?,
+      is_premium = ?,
+      word_count = ?,
+      source_chapter_id = ?,
+      content_file_path = ?,
+      content_preview = ?
+    WHERE id = ?
+  `);
 
   const insertChapter = db.prepare(`
     INSERT INTO chapters (
@@ -230,17 +256,42 @@ function replaceChapters(novelId, chapterRecords = []) {
   `);
 
   for (const chapter of normalizedRecords) {
-    insertChapter.run(
-      novelId,
-      chapter.chapterNumber,
-      chapter.title,
-      '',
-      0,
-      0,
-      chapter.sourceChapterId,
-      chapter.contentFilePath,
-      chapter.contentPreview
-    );
+    const existingChapter = existingChapterMap.get(chapter.chapterNumber);
+
+    if (existingChapter) {
+      updateChapter.run(
+        chapter.title,
+        '',
+        0,
+        0,
+        chapter.sourceChapterId,
+        chapter.contentFilePath,
+        chapter.contentPreview,
+        existingChapter.id
+      );
+    } else {
+      insertChapter.run(
+        novelId,
+        chapter.chapterNumber,
+        chapter.title,
+        '',
+        0,
+        0,
+        chapter.sourceChapterId,
+        chapter.contentFilePath,
+        chapter.contentPreview
+      );
+    }
+  }
+
+  const incomingChapterNumbers = [...seenChapterNumbers];
+
+  if (incomingChapterNumbers.length === 0) {
+    db.prepare('DELETE FROM chapters WHERE novel_id = ?').run(novelId);
+  } else {
+    const placeholders = incomingChapterNumbers.map(() => '?').join(', ');
+    db.prepare(`DELETE FROM chapters WHERE novel_id = ? AND chapter_number NOT IN (${placeholders})`)
+      .run(novelId, ...incomingChapterNumbers);
   }
 
   db.prepare('UPDATE novels SET chapter_count = ? WHERE id = ?').run(normalizedRecords.length, novelId);
