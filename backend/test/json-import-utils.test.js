@@ -40,6 +40,13 @@ test('buildChapterFilePath 应生成章节正文的相对路径', () => {
   assert.equal(buildChapterFilePath(2530, 1), 'chapters/2530/1.json');
 });
 
+test('buildChapterFilePath 应拒绝非数字书籍标识', () => {
+  assert.throws(
+    () => buildChapterFilePath('../2530', 1),
+    /bookId 必须是数字字符串/
+  );
+});
+
 test('buildContentPreview 应压缩空白并截断正文摘要', () => {
   assert.equal(
     buildContentPreview(' 第一段\n\n第二段   第三段 '),
@@ -63,15 +70,20 @@ test('normalizeBookRecord 应抽取书级元数据并补齐主分类与查找键
       status: '连载',
       intro: '天地间有万相',
       lastUpdate: '2025-11-15',
-      lastChapter: '第一千八百三十七章 大结局',
-      cover: 'https://example.com/cover.jpg',
+      lastChapter: {
+        chapterId: 1836,
+        title: '第一千八百三十七章 大结局',
+      },
+      cover: {
+        originalUrl: 'https://www.bqg291.cc/bookimg/2/2530.jpg',
+        localPath: 'storage/json/biquge/covers/2530.jpg',
+      },
       chapterCount: 2,
       chapters: [
         { chapterNumber: 1, title: '第1章 我有三个相宫' },
       ],
       fetchedAt: '2026-03-21T18:11:00+08:00',
-    },
-    'storage/json/biquge'
+    }
   );
 
   assert.deepEqual(result, {
@@ -84,8 +96,14 @@ test('normalizeBookRecord 应抽取书级元数据并补齐主分类与查找键
     status: '连载',
     intro: '天地间有万相',
     lastUpdate: '2025-11-15',
-    lastChapter: '第一千八百三十七章 大结局',
-    cover: 'https://example.com/cover.jpg',
+    lastChapter: {
+      chapterId: 1836,
+      title: '第一千八百三十七章 大结局',
+    },
+    cover: {
+      originalUrl: 'https://www.bqg291.cc/bookimg/2/2530.jpg',
+      localPath: 'storage/json/biquge/covers/2530.jpg',
+    },
     chapterCount: 2,
     chapters: [
       { chapterNumber: 1, title: '第1章 我有三个相宫' },
@@ -115,8 +133,7 @@ test('normalizeChapterRecord 应生成章节相对路径和摘要', () => {
       pageUrls: ['https://apibi.cc/api/chapter?id=2530&chapterid=1'],
       content: '第一段\n第二段',
       fetchedAt: '2026-03-21T19:50:00+08:00',
-    },
-    'storage/json/biquge'
+    }
   );
 
   assert.deepEqual(result, {

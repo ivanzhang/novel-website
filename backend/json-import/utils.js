@@ -28,8 +28,21 @@ function buildNovelLookupKey(book = {}) {
   return `titleAuthor:${normalizeTitle(book.title)}|${normalizeAuthor(book.author)}`;
 }
 
+function ensureNumericId(value, fieldName) {
+  const text = toText(value).trim();
+
+  if (!/^\d+$/.test(text)) {
+    throw new Error(`${fieldName} 必须是数字字符串`);
+  }
+
+  return text;
+}
+
 function buildChapterFilePath(bookId, chapterNumber) {
-  return path.posix.join('chapters', toText(bookId), `${toText(chapterNumber)}.json`);
+  const safeBookId = ensureNumericId(bookId, 'bookId');
+  const safeChapterNumber = ensureNumericId(chapterNumber, 'chapterNumber');
+
+  return path.posix.join('chapters', safeBookId, `${safeChapterNumber}.json`);
 }
 
 function buildContentPreview(content) {
@@ -41,8 +54,7 @@ function buildContentPreview(content) {
   return preview.slice(0, 120);
 }
 
-function normalizeBookRecord(bookJson = {}, rootDir = '') {
-  void rootDir;
+function normalizeBookRecord(bookJson = {}) {
   const chapters = Array.isArray(bookJson.chapters)
     ? bookJson.chapters.map((chapter) => ({ ...chapter }))
     : [];
@@ -57,8 +69,12 @@ function normalizeBookRecord(bookJson = {}, rootDir = '') {
     status: toText(bookJson.status),
     intro: toText(bookJson.intro),
     lastUpdate: toText(bookJson.lastUpdate),
-    lastChapter: toText(bookJson.lastChapter),
-    cover: toText(bookJson.cover),
+    lastChapter: bookJson.lastChapter && typeof bookJson.lastChapter === 'object'
+      ? { ...bookJson.lastChapter }
+      : toText(bookJson.lastChapter),
+    cover: bookJson.cover && typeof bookJson.cover === 'object'
+      ? { ...bookJson.cover }
+      : toText(bookJson.cover),
     chapterCount: Number(bookJson.chapterCount) || 0,
     chapters,
     fetchedAt: toText(bookJson.fetchedAt),
@@ -66,8 +82,7 @@ function normalizeBookRecord(bookJson = {}, rootDir = '') {
   };
 }
 
-function normalizeChapterRecord(bookJson = {}, chapterJson = {}, rootDir = '') {
-  void rootDir;
+function normalizeChapterRecord(bookJson = {}, chapterJson = {}) {
   const bookId = toText(chapterJson.bookId || bookJson.bookId);
   const chapterNumber = Number(chapterJson.chapterNumber) || 0;
 
