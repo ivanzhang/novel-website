@@ -4,3 +4,5 @@ node_modules/
 gstack
 storage*
 storage.zip
+novels.db*
+**/novels.db*

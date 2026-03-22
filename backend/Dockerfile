@@ -1,13 +1,14 @@
-FROM node:18-alpine
+FROM node:24-alpine
 
 RUN apk add --no-cache python3 make g++
 
-WORKDIR /app
+WORKDIR /app/backend
 
-COPY package*.json ./
-RUN npm install --production
+COPY backend/package*.json ./
+RUN npm install --omit=dev
 
-COPY . .
+COPY backend ./
+COPY frontend ../frontend
 
 EXPOSE 3000
 
