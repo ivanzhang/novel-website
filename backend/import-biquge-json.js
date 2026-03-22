@@ -110,6 +110,7 @@ function buildChapterRecord(bookJson = {}, chapterJson = {}) {
     title: chapterJson.title || '',
     sourceUrl: chapterJson.sourceUrl || '',
     pageUrls: Array.isArray(chapterJson.pageUrls) ? [...chapterJson.pageUrls] : [],
+    content: '',
     content_preview: buildContentPreview(chapterJson.content || ''),
     content_file_path: contentFilePath,
   };
