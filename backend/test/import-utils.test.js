@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   IMPORT_ITEM_STATUS,
   normalizeTitle,
+  normalizeAuthor,
   suggestClassification,
   scoreDuplicateCandidate,
   summarizeFailureReason,
@@ -23,6 +24,10 @@ test('IMPORT_ITEM_STATUS 应该暴露导入条目的标准状态', () => {
 
 test('normalizeTitle 应移除常见盗版站噪音词', () => {
   assert.equal(normalizeTitle('万相之王 最新章节 无弹窗'), '万相之王');
+});
+
+test('normalizeAuthor 应可被导出并去除作者后缀', () => {
+  assert.equal(normalizeAuthor('天蚕土豆著'), '天蚕土豆');
 });
 
 test('suggestClassification 应优先命中来源栏目映射', () => {

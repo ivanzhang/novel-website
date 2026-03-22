@@ -165,6 +165,7 @@ function summarizeFailureReason(code, detail) {
 module.exports = {
   IMPORT_ITEM_STATUS,
   normalizeTitle,
+  normalizeAuthor,
   suggestClassification,
   scoreDuplicateCandidate,
   summarizeFailureReason,
