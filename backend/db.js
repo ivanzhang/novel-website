@@ -5,6 +5,18 @@ const db = new Database(process.env.DB_PATH || 'novels.db');
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+function getTableColumns(tableName) {
+  return db.prepare(`PRAGMA table_info(${tableName})`).all().map((row) => row.name);
+}
+
+function ensureColumn(tableName, columnName, columnDefinition) {
+  const columns = getTableColumns(tableName);
+
+  if (!columns.includes(columnName)) {
+    db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`);
+  }
+}
+
 // 初始化数据库表
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -25,7 +37,13 @@ db.exec(`
     chapter_count INTEGER DEFAULT 0,
     description TEXT,
     free_chapters INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    source_site TEXT,
+    source_book_id TEXT,
+    source_category TEXT,
+    primary_category TEXT,
+    cover_url TEXT,
+    content_storage TEXT
   );
 
   CREATE TABLE IF NOT EXISTS chapters (
@@ -37,6 +55,9 @@ db.exec(`
     is_premium INTEGER DEFAULT 0,
     word_count INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    source_chapter_id TEXT,
+    content_file_path TEXT,
+    content_preview TEXT,
     FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
     UNIQUE(novel_id, chapter_number)
   );
@@ -155,11 +176,22 @@ db.exec(`
   );
 `);
 
+ensureColumn('novels', 'source_site', 'source_site TEXT');
+ensureColumn('novels', 'source_book_id', 'source_book_id TEXT');
+ensureColumn('novels', 'source_category', 'source_category TEXT');
+ensureColumn('novels', 'primary_category', 'primary_category TEXT');
+ensureColumn('novels', 'cover_url', 'cover_url TEXT');
+ensureColumn('novels', 'content_storage', 'content_storage TEXT');
+ensureColumn('chapters', 'source_chapter_id', 'source_chapter_id TEXT');
+ensureColumn('chapters', 'content_file_path', 'content_file_path TEXT');
+ensureColumn('chapters', 'content_preview', 'content_preview TEXT');
+
 // 创建索引
 db.exec(`
   DROP INDEX IF EXISTS idx_source_records_source_key;
   CREATE INDEX IF NOT EXISTS idx_chapters_novel_id ON chapters(novel_id);
   CREATE INDEX IF NOT EXISTS idx_chapters_novel_chapter ON chapters(novel_id, chapter_number);
+  CREATE INDEX IF NOT EXISTS idx_chapters_content_file_path ON chapters(content_file_path);
   CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
   CREATE INDEX IF NOT EXISTS idx_progress_user_novel ON reading_progress(user_id, novel_id);
   CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks(user_id);
@@ -168,6 +200,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_import_items_job_id ON import_items(job_id);
   CREATE INDEX IF NOT EXISTS idx_import_items_source_record_id ON import_items(source_record_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_source_records_source_type_source_key ON source_records(source_type, source_key);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_novels_source_site_source_book_id ON novels(source_site, source_book_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
   CREATE INDEX IF NOT EXISTS idx_novel_aliases_novel_id ON novel_aliases(novel_id);
