@@ -3,10 +3,19 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
-const { buildChapterFilePath, buildContentPreview } = require('./json-import/utils');
+const {
+  buildChapterFilePath,
+  buildContentPreview,
+  mapPrimaryCategory,
+} = require('./json-import/utils');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const DEFAULT_ROOT = path.join(PROJECT_ROOT, 'storage/json/biquge');
+
+if (!process.env.DB_PATH) {
+  process.env.DB_PATH = path.join(__dirname, 'novels.db');
+}
+
 let dbInstance;
 let repository;
 
@@ -74,6 +83,16 @@ async function readJsonFile(filePath) {
   return JSON.parse(text);
 }
 
+function buildLocalCoverUrl(bookJson = {}) {
+  const bookId = String(bookJson.bookId || '').trim();
+
+  if (!bookId) {
+    return null;
+  }
+
+  return `/covers/${bookId}.jpg`;
+}
+
 function buildNovelRecord(bookJson = {}) {
   const bookId = String(bookJson.bookId || '');
 
@@ -87,10 +106,8 @@ function buildNovelRecord(bookJson = {}) {
     description: bookJson.intro || '',
     chapter_count: Number(bookJson.chapterCount) || 0,
     source_category: bookJson.category || '',
-    primary_category: bookJson.category || '',
-    cover_url: bookJson.cover && typeof bookJson.cover === 'object'
-      ? bookJson.cover.originalUrl || null
-      : null,
+    primary_category: mapPrimaryCategory(bookJson.category || ''),
+    cover_url: buildLocalCoverUrl(bookJson),
     content_storage: 'json',
   };
 }
@@ -116,6 +133,35 @@ function buildChapterRecord(bookJson = {}, chapterJson = {}) {
   };
 }
 
+function toExpectedChapterNumbers(bookJson = {}) {
+  if (!Array.isArray(bookJson.chapters)) {
+    return new Set();
+  }
+
+  return new Set(
+    bookJson.chapters
+      .map((chapter) => Number(chapter && chapter.chapterNumber))
+      .filter((chapterNumber) => Number.isInteger(chapterNumber) && chapterNumber > 0)
+  );
+}
+
+async function listChapterFileNames(chaptersDir) {
+  try {
+    const entries = await fs.readdir(chaptersDir, { withFileTypes: true });
+
+    return entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+      .map((entry) => entry.name)
+      .sort((left, right) => Number.parseInt(left, 10) - Number.parseInt(right, 10));
+  } catch (error) {
+    if (error && error.code === 'ENOENT') {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
 async function importOneBook(root, bookFileName) {
   const { findNovelForImport, importNovelRecord } = getRepository();
   const bookFilePath = path.join(root, 'books', bookFileName);
@@ -123,30 +169,27 @@ async function importOneBook(root, bookFileName) {
   const novelRecord = buildNovelRecord(bookJson);
   const existingNovel = findNovelForImport(novelRecord);
   const chaptersDir = path.join(root, 'chapters', String(bookJson.bookId || ''));
-  const chapters = Array.isArray(bookJson.chapters) ? bookJson.chapters : [];
+  const chapterFileNames = await listChapterFileNames(chaptersDir);
+  const expectedChapterNumbers = toExpectedChapterNumbers(bookJson);
   const chapterRecords = [];
-  let missingContentFiles = 0;
+  const importedChapterNumbers = new Set();
 
-  for (const chapterMeta of chapters) {
-    const chapterNumber = Number(chapterMeta && chapterMeta.chapterNumber);
+  for (const chapterFileName of chapterFileNames) {
+    const chapterFilePath = path.join(chaptersDir, chapterFileName);
+    const chapterNumber = Number.parseInt(path.basename(chapterFileName, '.json'), 10);
 
     if (!Number.isInteger(chapterNumber) || chapterNumber <= 0) {
       continue;
     }
 
-    const chapterFileName = `${chapterNumber}.json`;
-    const chapterFilePath = path.join(chaptersDir, chapterFileName);
-
-    try {
-      await fs.access(chapterFilePath);
-    } catch {
-      missingContentFiles += 1;
-      continue;
-    }
-
     const chapterJson = await readJsonFile(chapterFilePath);
     chapterRecords.push(buildChapterRecord(bookJson, chapterJson));
+    importedChapterNumbers.add(chapterNumber);
   }
+
+  const missingContentFiles = [...expectedChapterNumbers]
+    .filter((chapterNumber) => !importedChapterNumbers.has(chapterNumber))
+    .length;
 
   const novelId = importNovelRecord(novelRecord, chapterRecords);
   const sourceChapterCount = Number(bookJson.chapterCount);
@@ -229,6 +272,7 @@ module.exports = {
   resolveRoot,
   parseArgs,
   printHelp,
+  buildLocalCoverUrl,
   buildNovelRecord,
   buildChapterRecord,
   importOneBook,

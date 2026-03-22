@@ -56,83 +56,83 @@ function withLegacyNovelChapterSchema(callback) {
   }
 }
 
-function loadDbModuleAtPath(dbPath) {
+class BetterSqlite3Compat {
+  constructor(filename) {
+    this.db = new DatabaseSync(filename);
+    this.transactionDepth = 0;
+  }
+
+  pragma(statement) {
+    this.db.exec(`PRAGMA ${statement};`);
+    return this;
+  }
+
+  exec(sql) {
+    return this.db.exec(sql);
+  }
+
+  prepare(sql) {
+    const statement = this.db.prepare(sql);
+
+    return {
+      run: (...params) => statement.run(...params),
+      get: (...params) => statement.get(...params),
+      all: (...params) => statement.all(...params),
+    };
+  }
+
+  transaction(fn) {
+    const db = this;
+
+    return function transactionWrapper(...args) {
+      const depth = db.transactionDepth;
+      const savepointName = `sp_${depth + 1}`;
+      const outerTransaction = depth === 0;
+
+      if (outerTransaction) {
+        db.db.exec('BEGIN');
+      } else {
+        db.db.exec(`SAVEPOINT ${savepointName}`);
+      }
+
+      db.transactionDepth += 1;
+
+      try {
+        const result = fn.apply(this, args);
+        db.transactionDepth -= 1;
+
+        if (outerTransaction) {
+          db.db.exec('COMMIT');
+        } else {
+          db.db.exec(`RELEASE SAVEPOINT ${savepointName}`);
+        }
+
+        return result;
+      } catch (error) {
+        db.transactionDepth -= 1;
+
+        if (outerTransaction) {
+          db.db.exec('ROLLBACK');
+        } else {
+          db.db.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`);
+          db.db.exec(`RELEASE SAVEPOINT ${savepointName}`);
+        }
+
+        throw error;
+      }
+    };
+  }
+
+  close() {
+    this.db.close();
+  }
+}
+
+function loadDbModuleAtPath(dbPath, betterSqlite3Export = BetterSqlite3Compat) {
   const previousDbPath = process.env.DB_PATH;
   const dbModulePath = path.resolve(__dirname, '../db.js');
   const betterSqlite3ModulePath = require.resolve('better-sqlite3');
   const previousBetterSqlite3Module = require.cache[betterSqlite3ModulePath];
-
-  class BetterSqlite3Compat {
-    constructor(filename) {
-      this.db = new DatabaseSync(filename);
-      this.transactionDepth = 0;
-    }
-
-    pragma(statement) {
-      this.db.exec(`PRAGMA ${statement};`);
-      return this;
-    }
-
-    exec(sql) {
-      return this.db.exec(sql);
-    }
-
-    prepare(sql) {
-      const statement = this.db.prepare(sql);
-
-      return {
-        run: (...params) => statement.run(...params),
-        get: (...params) => statement.get(...params),
-        all: (...params) => statement.all(...params),
-      };
-    }
-
-    transaction(fn) {
-      const db = this;
-
-      return function transactionWrapper(...args) {
-        const depth = db.transactionDepth;
-        const savepointName = `sp_${depth + 1}`;
-        const outerTransaction = depth === 0;
-
-        if (outerTransaction) {
-          db.db.exec('BEGIN');
-        } else {
-          db.db.exec(`SAVEPOINT ${savepointName}`);
-        }
-
-        db.transactionDepth += 1;
-
-        try {
-          const result = fn.apply(this, args);
-          db.transactionDepth -= 1;
-
-          if (outerTransaction) {
-            db.db.exec('COMMIT');
-          } else {
-            db.db.exec(`RELEASE SAVEPOINT ${savepointName}`);
-          }
-
-          return result;
-        } catch (error) {
-          db.transactionDepth -= 1;
-
-          if (outerTransaction) {
-            db.db.exec('ROLLBACK');
-          } else {
-            db.db.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`);
-            db.db.exec(`RELEASE SAVEPOINT ${savepointName}`);
-          }
-
-          throw error;
-        }
-      };
-    }
-
-    close() {
-      this.db.close();
-    }
-  }
 
   process.env.DB_PATH = dbPath;
   delete require.cache[dbModulePath];
@@ -142,7 +142,7 @@ function loadDbModuleAtPath(dbPath) {
       id: betterSqlite3ModulePath,
       filename: betterSqlite3ModulePath,
       loaded: true,
-      exports: BetterSqlite3Compat,
+      exports: betterSqlite3Export,
     };
 
     const db = require(dbModulePath);
@@ -293,6 +293,47 @@ test('db 初始化可对同一数据库文件重复执行', () => {
     ]);
   } finally {
     secondDb.close();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('db 初始化在 better-sqlite3 不可用时应回退到 node:sqlite', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'novel-website-db-fallback-'));
+  const dbPath = path.join(tempDir, 'test.db');
+
+  class BrokenBetterSqlite3 {
+    constructor() {
+      throw new Error('Could not locate the bindings file');
+    }
+  }
+
+  const db = loadDbModuleAtPath(dbPath, BrokenBetterSqlite3);
+
+  try {
+    assert.deepEqual(getTableColumns(db, 'novels'), [
+      'id',
+      'title',
+      'author',
+      'content',
+      'is_premium',
+      'chapter_count',
+      'description',
+      'free_chapters',
+      'created_at',
+      'source_site',
+      'source_book_id',
+      'source_category',
+      'primary_category',
+      'cover_url',
+      'content_storage',
+    ]);
+
+    db.prepare('INSERT INTO novels (title, author, content) VALUES (?, ?, ?)').run('测试书', '作者', '');
+    const row = db.prepare('SELECT title, author FROM novels').get();
+    assert.equal(row.title, '测试书');
+    assert.equal(row.author, '作者');
+  } finally {
+    db.close();
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });

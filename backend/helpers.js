@@ -1,4 +1,4 @@
-const db = require('../db');
+const db = require('./db');
 
 // 3-tier premium access check:
 // 1. chapter.is_premium → true

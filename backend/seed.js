@@ -2,7 +2,7 @@ const db = require('./db');
 
 // 数据迁移：将现有小说拆分为章节
 function migrateNovelsToChapters() {
-  const novels = db.prepare('SELECT * FROM novels WHERE chapter_count = 0 AND content IS NOT NULL AND content != ""').all();
+  const novels = db.prepare("SELECT * FROM novels WHERE chapter_count = 0 AND content IS NOT NULL AND content != ''").all();
 
   for (const novel of novels) {
     const chapterRegex = /第[一二三四五六七八九十百千万\d]+章[：:]\s*(.+?)(?=\n\n|$)/g;

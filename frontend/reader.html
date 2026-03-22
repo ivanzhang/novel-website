@@ -197,12 +197,16 @@
 
                     if (!response.ok) {
                         const error = await response.json();
-                        contentDiv.innerHTML = `
+                        if (response.status === 403) {
+                            contentDiv.innerHTML = `
               <div class="error-box">
                 <h3>${escapeHtml(error.error)}</h3>
                 <p><a href="membership.html">立即开通会员</a></p>
               </div>
             `;
+                        } else {
+                            contentDiv.innerHTML = `<p class="error">加载失败：${escapeHtml(error.error || '未知错误')}</p>`;
+                        }
                         return;
                     }
 

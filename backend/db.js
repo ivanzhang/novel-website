@@ -1,5 +1,93 @@
-const Database = require('better-sqlite3');
-const db = new Database(process.env.DB_PATH || 'novels.db');
+const { DatabaseSync } = require('node:sqlite');
+
+function createNodeSqliteCompat(filename) {
+  return new (class NodeSqliteCompat {
+    constructor() {
+      this.db = new DatabaseSync(filename);
+      this.transactionDepth = 0;
+    }
+
+    pragma(statement) {
+      this.db.exec(`PRAGMA ${statement};`);
+      return this;
+    }
+
+    exec(sql) {
+      return this.db.exec(sql);
+    }
+
+    prepare(sql) {
+      const statement = this.db.prepare(sql);
+
+      return {
+        run: (...params) => statement.run(...params),
+        get: (...params) => statement.get(...params),
+        all: (...params) => statement.all(...params),
+      };
+    }
+
+    transaction(fn) {
+      const database = this;
+
+      return function transactionWrapper(...args) {
+        const depth = database.transactionDepth;
+        const savepointName = `sp_${depth + 1}`;
+        const outerTransaction = depth === 0;
+
+        if (outerTransaction) {
+          database.db.exec('BEGIN');
+        } else {
+          database.db.exec(`SAVEPOINT ${savepointName}`);
+        }
+
+        database.transactionDepth += 1;
+
+        try {
+          const result = fn.apply(this, args);
+          database.transactionDepth -= 1;
+
+          if (outerTransaction) {
+            database.db.exec('COMMIT');
+          } else {
+            database.db.exec(`RELEASE SAVEPOINT ${savepointName}`);
+          }
+
+          return result;
+        } catch (error) {
+          database.transactionDepth -= 1;
+
+          if (outerTransaction) {
+            database.db.exec('ROLLBACK');
+          } else {
+            database.db.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`);
+            database.db.exec(`RELEASE SAVEPOINT ${savepointName}`);
+          }
+
+          throw error;
+        }
+      };
+    }
+
+    close() {
+      this.db.close();
+    }
+  })();
+}
+
+function createDatabase(filename) {
+  try {
+    const BetterSqlite3 = require('better-sqlite3');
+    return new BetterSqlite3(filename);
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'test') {
+      console.warn(`better-sqlite3 不可用，回退到 node:sqlite: ${error.message}`);
+    }
+
+    return createNodeSqliteCompat(filename);
+  }
+}
+
+const db = createDatabase(process.env.DB_PATH || 'novels.db');
 
 // 启用 WAL 模式提升并发性能
 db.pragma('journal_mode = WAL');

@@ -90,8 +90,14 @@
         // 显示小说详情
         document.getElementById('novelDetail').innerHTML = `
           <div class="novel-header">
+            <div class="novel-detail-cover-wrap">
+              ${novel.cover_url
+                ? `<img class="novel-detail-cover" src="${escapeHtml(novel.cover_url)}" alt="${escapeHtml(novel.title)}" referrerpolicy="no-referrer">`
+                : `<div class="novel-detail-cover novel-detail-cover-fallback">${escapeHtml(novel.title.charAt(0))}</div>`
+              }
+            </div>
             <h2>${escapeHtml(novel.title)}</h2>
-            <p class="novel-meta">作者：${escapeHtml(novel.author)} | 共${novel.chapter_count}章</p>
+            <p class="novel-meta">作者：${escapeHtml(novel.author)} | 共${novel.chapter_count}章${novel.primary_category ? ` | 主分类：${escapeHtml(novel.primary_category)}` : ''}${novel.source_category && novel.source_category !== novel.primary_category ? ` | 来源分类：${escapeHtml(novel.source_category)}` : ''}</p>
 
             <!-- 评分显示 -->
             <div class="rating-section">

@@ -26,23 +26,48 @@
     <!-- 搜索框 -->
     <div class="search-container">
       <input type="text" id="searchInput" placeholder="搜索小说标题或作者..." onkeyup="handleSearch(event)">
+      <select id="sortSelect" onchange="changeSort(this.value)" aria-label="小说排序">
+        <option value="popular">热门</option>
+        <option value="newest">最新</option>
+      </select>
       <button onclick="performSearch()">🔍 搜索</button>
     </div>
 
     <div id="searchResults"></div>
     <div id="continueReading"></div>
-    <h2 id="novelListTitle">热门小说</h2>
-    <div class="novel-list" id="novelList"></div>
+    <div class="catalog-layout">
+      <aside class="category-sidebar" id="categorySidebar"></aside>
+      <section class="catalog-main">
+        <div class="catalog-header">
+          <div class="catalog-title-block">
+            <h2 id="novelListTitle">热门小说</h2>
+            <p id="catalogSubtitle" class="catalog-subtitle">浏览全部分类下的小说</p>
+          </div>
+          <div id="catalogMeta" class="catalog-meta"></div>
+        </div>
+        <div class="novel-list" id="novelList"></div>
+        <div id="pagination" class="pagination"></div>
+      </section>
+    </div>
   </div>
 
   <script>
     const API_URL = '/api';
     const token = localStorage.getItem('token');
+    const urlParams = new URLSearchParams(window.location.search);
+    let currentCategory = urlParams.get('category') || '';
+    let currentPage = Math.max(1, parseInt(urlParams.get('page')) || 1);
+    let currentQuery = urlParams.get('q') || '';
+    let currentSort = urlParams.get('sort') === 'newest' ? 'newest' : 'popular';
+    const currentLimit = 20;
 
     function escapeHtml(str) {
       if (!str) return '';
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
     }
+
+    document.getElementById('searchInput').value = currentQuery;
+    document.getElementById('sortSelect').value = currentSort;
 
     if (token) {
       document.getElementById('loginLink').style.display = 'none';
@@ -92,12 +117,17 @@
 
     function renderNovelCard(novel) {
       const firstChar = novel.title.charAt(0);
+      const coverHtml = novel.cover_url
+        ? `<img class="novel-cover-image" src="${escapeHtml(novel.cover_url)}" alt="${escapeHtml(novel.title)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.parentElement.classList.add('novel-cover-fallback'); this.parentElement.textContent='${escapeHtml(firstChar)}';">`
+        : escapeHtml(firstChar);
+      const category = novel.primary_category || novel.source_category || '';
       return `
         <div class="novel-card" onclick="viewNovel(${novel.id})">
-          <div class="novel-cover" style="background: ${getCoverGradient(novel.id)}">${escapeHtml(firstChar)}</div>
+          <div class="novel-cover ${novel.cover_url ? '' : 'novel-cover-fallback'}" style="background: ${getCoverGradient(novel.id)}">${coverHtml}</div>
           <div class="novel-card-info">
             <h3>${escapeHtml(novel.title)}${novel.is_premium ? '<span class="premium-badge">VIP</span>' : ''}</h3>
             <p class="author">作者：${escapeHtml(novel.author)}</p>
+            ${category ? `<p class="novel-category">分类：${escapeHtml(category)}</p>` : ''}
             ${novel.description ? `<p class="novel-desc">${escapeHtml(novel.description)}</p>` : ''}
             ${novel.chapter_count ? `<p class="chapter-count">${novel.chapter_count}章</p>` : ''}
           </div>
@@ -113,7 +143,14 @@
       }
 
       try {
-        const response = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`);
+        currentQuery = query;
+        const params = new URLSearchParams({ q: query });
+        if (currentCategory) {
+          params.set('category', currentCategory);
+        }
+        params.set('sort', currentSort);
+        updateCatalogUrl();
+        const response = await fetch(`${API_URL}/search?${params.toString()}`);
         const results = await response.json();
 
         const resultsDiv = document.getElementById('searchResults');
@@ -124,26 +161,33 @@
           resultsDiv.innerHTML = '<p class="no-results">未找到相关小说</p>';
           novelListDiv.style.display = 'none';
           titleDiv.style.display = 'none';
+          document.getElementById('pagination').style.display = 'none';
           return;
         }
 
         resultsDiv.innerHTML = `
-          <h3>搜索结果 (${results.length})</h3>
+          <h3>${currentCategory ? `${escapeHtml(currentCategory)}分类下` : ''}搜索“${escapeHtml(query)}” (${results.length})</h3>
           <div class="novel-list">
             ${results.map(novel => renderNovelCard(novel)).join('')}
           </div>
         `;
         novelListDiv.style.display = 'none';
         titleDiv.style.display = 'none';
+        document.getElementById('pagination').style.display = 'none';
       } catch (error) {
         console.error('搜索失败', error);
       }
     }
 
     function clearSearch() {
+      currentQuery = '';
+      document.getElementById('searchInput').value = '';
       document.getElementById('searchResults').innerHTML = '';
       document.getElementById('novelList').style.display = 'grid';
       document.getElementById('novelListTitle').style.display = 'block';
+      document.getElementById('pagination').style.display = 'flex';
+      updateCatalogUrl();
+      loadNovels();
     }
 
     async function loadContinueReading() {
@@ -182,13 +226,111 @@
       location.href = `reader.html?novelId=${novelId}&chapter=${chapterNumber}`;
     }
 
+    function updateCatalogUrl() {
+      const params = new URLSearchParams();
+      if (currentCategory) params.set('category', currentCategory);
+      if (currentPage > 1) params.set('page', currentPage);
+      if (currentQuery) params.set('q', currentQuery);
+      if (currentSort !== 'popular') params.set('sort', currentSort);
+      const query = params.toString();
+      history.replaceState(null, '', query ? `index.html?${query}` : 'index.html');
+    }
+
+    function renderPagination(total, page, limit) {
+      const pagination = document.getElementById('pagination');
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+
+      if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+      }
+
+      pagination.innerHTML = `
+        <button ${page <= 1 ? 'disabled' : ''} onclick="changePage(${page - 1})">上一页</button>
+        <span>第 ${page} / ${totalPages} 页</span>
+        <button ${page >= totalPages ? 'disabled' : ''} onclick="changePage(${page + 1})">下一页</button>
+      `;
+    }
+
+    function renderCategorySidebar(categories) {
+      const sidebar = document.getElementById('categorySidebar');
+      const allClass = currentCategory ? '' : 'active';
+      const currentCategoryMeta = categories.find((item) => item.category === currentCategory);
+      const allCount = categories.reduce((sum, item) => sum + item.count, 0);
+      sidebar.innerHTML = `
+        <div class="category-sidebar-inner">
+          <h3>分类浏览</h3>
+          <p class="category-current-label">当前：${escapeHtml(currentCategory || '全部')}</p>
+          <button class="category-link ${allClass}" onclick="selectCategory('')">
+            <span>全部</span>
+            <span class="category-count">${allCount}</span>
+          </button>
+          ${categories.map(item => `
+            <button class="category-link ${currentCategory === item.category ? 'active' : ''}" onclick="selectCategory('${escapeHtml(item.category)}')">
+              <span>${escapeHtml(item.category)}</span>
+              <span class="category-count">${item.count}</span>
+            </button>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    async function loadCategories() {
+      const response = await fetch(`${API_URL}/novel-categories`);
+      const categories = await response.json();
+      renderCategorySidebar(categories);
+    }
+
     async function loadNovels() {
-      const response = await fetch(`${API_URL}/novels`);
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        limit: String(currentLimit),
+        sort: currentSort
+      });
+      if (currentCategory) {
+        params.set('category', currentCategory);
+      }
+
+      const response = await fetch(`${API_URL}/novels?${params.toString()}`);
       const data = await response.json();
-      const novels = data.novels || data;
+      const novels = data.novels || [];
 
       const novelList = document.getElementById('novelList');
       novelList.innerHTML = novels.map(novel => renderNovelCard(novel)).join('');
+      document.getElementById('novelListTitle').textContent = currentCategory ? `${currentCategory}小说` : '全部小说';
+      document.getElementById('catalogSubtitle').textContent = currentCategory
+        ? `当前分类：${currentCategory} · 排序：${currentSort === 'popular' ? '热门' : '最新'}`
+        : `浏览全部分类下的小说 · 排序：${currentSort === 'popular' ? '热门' : '最新'}`;
+      document.getElementById('catalogMeta').textContent = `${currentSort === 'popular' ? '热门榜' : '最新上架'} · 当前 ${data.total} 本`;
+      renderPagination(data.total, data.page, data.limit);
+      updateCatalogUrl();
+    }
+
+    function changeSort(sort) {
+      currentSort = sort === 'newest' ? 'newest' : 'popular';
+      currentPage = 1;
+      updateCatalogUrl();
+      if (currentQuery) {
+        performSearch();
+      } else {
+        loadNovels();
+      }
+    }
+
+    function selectCategory(category) {
+      currentCategory = category;
+      currentPage = 1;
+      loadCategories();
+      if (currentQuery) {
+        performSearch();
+      } else {
+        loadNovels();
+      }
+    }
+
+    function changePage(page) {
+      currentPage = page;
+      loadNovels();
     }
 
     function viewNovel(id) {
@@ -196,7 +338,12 @@
     }
 
     loadContinueReading();
-    loadNovels();
+    loadCategories();
+    if (currentQuery) {
+      performSearch();
+    } else {
+      loadNovels();
+    }
   </script>
 </body>
 </html>

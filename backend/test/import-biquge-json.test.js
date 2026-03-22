@@ -106,6 +106,22 @@ async function createTempRoot() {
   return root;
 }
 
+test('import 脚本默认应把 DB_PATH 固定到 backend/novels.db', () => {
+  const previousDbPath = process.env.DB_PATH;
+
+  try {
+    delete process.env.DB_PATH;
+    loadImporter();
+    assert.equal(process.env.DB_PATH, path.resolve(__dirname, '../novels.db'));
+  } finally {
+    if (previousDbPath === undefined) {
+      delete process.env.DB_PATH;
+    } else {
+      process.env.DB_PATH = previousDbPath;
+    }
+  }
+});
+
 test('parseArgs 应该支持 --root 指定扫描目录', () => {
   const { parseArgs } = loadImporter();
   const result = parseArgs([
@@ -167,12 +183,13 @@ test('importBiqugeJson 应该扫描 books 和 chapters、写入摘要并返回�
     });
 
     const novel2530 = db.prepare(
-      'SELECT title, author, chapter_count, content_storage FROM novels WHERE source_book_id = ?'
+      'SELECT title, author, chapter_count, content_storage, cover_url FROM novels WHERE source_book_id = ?'
     ).get('2530');
     assert.equal(novel2530.title, '万相之王');
     assert.equal(novel2530.author, '天蚕土豆');
     assert.equal(novel2530.chapter_count, 2);
     assert.equal(novel2530.content_storage, 'json');
+    assert.equal(novel2530.cover_url, '/covers/2530.jpg');
 
     const chapter2530 = db.prepare(
       'SELECT chapter_number, title, content, content_file_path, content_preview FROM chapters WHERE novel_id = (SELECT id FROM novels WHERE source_book_id = ?) AND chapter_number = ?'
@@ -188,6 +205,78 @@ test('importBiqugeJson 应该扫描 books 和 chapters、写入摘要并返回�
     ).get('9999', 1);
     assert.equal(chapter9999.content_file_path, 'chapters/9999/1.json');
     assert.equal(chapter9999.content_preview, '新书正文');
+
+    const category9999 = db.prepare(
+      'SELECT source_category, primary_category FROM novels WHERE source_book_id = ?'
+    ).get('9999');
+    assert.equal(category9999.source_category, '都市');
+    assert.equal(category9999.primary_category, '都市');
+  } finally {
+    db.close();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('importBiqugeJson 应该按 chapters 目录扫描章节文件而不是依赖书级章节列表', async () => {
+  const db = createTestDb();
+  const root = await createTempRoot();
+
+  try {
+    const bookPath = path.join(root, 'books', '9999.json');
+    const bookJson = JSON.parse(await fs.readFile(bookPath, 'utf8'));
+    bookJson.category = '武侠仙侠';
+    bookJson.chapterCount = 2;
+    bookJson.chapters = [
+      { chapterNumber: 1, title: '第一章', url: 'https://0732.bqg291.cc/book/9999/1.html' },
+    ];
+    await fs.writeFile(bookPath, JSON.stringify(bookJson, null, 2));
+
+    await fs.writeFile(
+      path.join(root, 'chapters', '9999', '2.json'),
+      JSON.stringify({
+        site: 'https://0732.bqg291.cc',
+        apiHost: 'https://apibi.cc',
+        bookId: 9999,
+        bookTitle: '新书',
+        author: '新作者',
+        chapterNumber: 2,
+        title: '第二章',
+        sourceUrl: 'https://0732.bqg291.cc/book/9999/2.html',
+        pageUrls: ['https://apibi.cc/api/chapter?id=9999&chapterid=2'],
+        content: '第二章正文',
+        fetchedAt: '2026-03-22T08:10:00+08:00',
+      }, null, 2)
+    );
+
+    const { importBiqugeJson } = loadImporter();
+    const result = await importBiqugeJson({ root });
+
+    assert.deepEqual(result, {
+      total: 2,
+      added: 2,
+      updated: 0,
+      failed: 0,
+      missingContentFiles: 1,
+    });
+
+    const chapters9999 = db.prepare(
+      'SELECT chapter_number, title, content_file_path, content_preview FROM chapters WHERE novel_id = (SELECT id FROM novels WHERE source_book_id = ?) ORDER BY chapter_number ASC'
+    ).all('9999');
+
+    assert.deepEqual(
+      chapters9999.map((chapter) => chapter.chapter_number),
+      [1, 2]
+    );
+    assert.equal(chapters9999[1].title, '第二章');
+    assert.equal(chapters9999[1].content_file_path, 'chapters/9999/2.json');
+    assert.equal(chapters9999[1].content_preview, '第二章正文');
+
+    const novel9999 = db.prepare(
+      'SELECT source_category, primary_category, chapter_count FROM novels WHERE source_book_id = ?'
+    ).get('9999');
+    assert.equal(novel9999.source_category, '武侠仙侠');
+    assert.equal(novel9999.primary_category, '仙侠');
+    assert.equal(novel9999.chapter_count, 2);
   } finally {
     db.close();
     await fs.rm(root, { recursive: true, force: true });
