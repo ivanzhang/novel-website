@@ -198,6 +198,9 @@ function normalizeChapterRecord(chapterRecord = {}) {
   const sourceChapterId = trimText(getRecordField(chapterRecord, 'source_chapter_id', 'sourceChapterId')) || null;
   const contentFilePath = trimText(getRecordField(chapterRecord, 'content_file_path', 'contentFilePath')) || null;
   const contentPreview = trimText(getRecordField(chapterRecord, 'content_preview', 'contentPreview'));
+  const content = getRecordField(chapterRecord, 'content', 'content');
+  const wordCountValue = getRecordField(chapterRecord, 'word_count', 'wordCount');
+  const isPremiumValue = getRecordField(chapterRecord, 'is_premium', 'isPremium');
 
   return {
     chapterNumber,
@@ -205,7 +208,19 @@ function normalizeChapterRecord(chapterRecord = {}) {
     sourceChapterId,
     contentFilePath,
     contentPreview,
+    content,
+    hasContent: hasExplicitRecordField(chapterRecord, 'content', 'content'),
+    wordCount: Number(wordCountValue),
+    hasWordCount: hasExplicitRecordField(chapterRecord, 'word_count', 'wordCount'),
+    isPremium: Number(isPremiumValue),
+    hasIsPremium: hasExplicitRecordField(chapterRecord, 'is_premium', 'isPremium'),
   };
+}
+
+function ensurePositiveInteger(value, fieldName) {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${fieldName} 必须是正整数`);
+  }
 }
 
 function replaceChapters(novelId, chapterRecords = []) {
@@ -216,6 +231,8 @@ function replaceChapters(novelId, chapterRecords = []) {
   const seenChapterNumbers = new Set();
 
   for (const chapter of normalizedRecords) {
+    ensurePositiveInteger(chapter.chapterNumber, 'chapter_number');
+
     if (seenChapterNumbers.has(chapter.chapterNumber)) {
       throw new Error('chapter_number 不能重复');
     }
@@ -224,7 +241,7 @@ function replaceChapters(novelId, chapterRecords = []) {
   }
 
   const existingChapters = db.prepare(
-    'SELECT id, chapter_number FROM chapters WHERE novel_id = ?'
+    'SELECT id, chapter_number, content, is_premium, word_count FROM chapters WHERE novel_id = ?'
   ).all(novelId);
   const existingChapterMap = new Map(existingChapters.map((chapter) => [chapter.chapter_number, chapter]));
 
@@ -261,9 +278,9 @@ function replaceChapters(novelId, chapterRecords = []) {
     if (existingChapter) {
       updateChapter.run(
         chapter.title,
-        '',
-        0,
-        0,
+        chapter.hasContent ? chapter.content : existingChapter.content,
+        chapter.hasIsPremium ? chapter.isPremium : existingChapter.is_premium,
+        chapter.hasWordCount ? chapter.wordCount : existingChapter.word_count,
         chapter.sourceChapterId,
         chapter.contentFilePath,
         chapter.contentPreview,
@@ -274,9 +291,9 @@ function replaceChapters(novelId, chapterRecords = []) {
         novelId,
         chapter.chapterNumber,
         chapter.title,
-        '',
-        0,
-        0,
+        chapter.hasContent ? chapter.content : '',
+        chapter.hasIsPremium ? chapter.isPremium : 0,
+        chapter.hasWordCount ? chapter.wordCount : 0,
         chapter.sourceChapterId,
         chapter.contentFilePath,
         chapter.contentPreview

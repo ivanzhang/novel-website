@@ -261,6 +261,39 @@ test('upsertNovel 通过 title + author 回退命中时应保留旧来源键', (
   }
 });
 
+test('upsertNovel 输入空字符串来源键时应保留旧来源键', () => {
+  const db = createTestDb();
+  try {
+    const novelId = seedNovel(db, {
+      title: '万相之王',
+      author: '天蚕土豆',
+      source_site: 'https://0732.bqg291.cc',
+      source_book_id: '2530',
+      description: '旧简介',
+    });
+
+    const { upsertNovel } = loadRepository();
+    const returnedId = upsertNovel({
+      title: '万相之王 最新章节 无弹窗',
+      author: '天蚕土豆著',
+      source_site: '',
+      source_book_id: '',
+      description: '天地间有万相',
+      chapterCount: 1837,
+      freeChapters: 12,
+      content_storage: 'json',
+    });
+
+    assert.equal(returnedId, novelId);
+
+    const updated = db.prepare('SELECT * FROM novels WHERE id = ?').get(novelId);
+    assert.equal(updated.source_site, 'https://0732.bqg291.cc');
+    assert.equal(updated.source_book_id, '2530');
+  } finally {
+    db.close();
+  }
+});
+
 test('replaceChapters 应删除旧章节并重建目录', () => {
   const db = createTestDb();
   try {
@@ -313,7 +346,7 @@ test('replaceChapters 应删除旧章节并重建目录', () => {
       {
         chapter_number: 1,
         title: '第1章 我有三个相宫',
-        content: '',
+        content: '旧正文 1',
         source_chapter_id: '1',
         content_file_path: 'chapters/2530/1.json',
         content_preview: '第一段 第二段',
@@ -321,7 +354,7 @@ test('replaceChapters 应删除旧章节并重建目录', () => {
       {
         chapter_number: 2,
         title: '第2章 不想退婚的未婚妻',
-        content: '',
+        content: '旧正文 2',
         source_chapter_id: '2',
         content_file_path: 'chapters/2530/2.json',
         content_preview: '第三段 第四段',
@@ -419,6 +452,82 @@ test('replaceChapters 应按 chapter_number 同步并保留关联的 chapter_id'
     assert.equal(progress.chapter_id, chapter1Id);
     assert.equal(progress.scroll_position, 88);
     assert.equal(progress.reading_time, 123);
+  } finally {
+    db.close();
+  }
+});
+
+test('replaceChapters 更新已有章节时应保留正文和计数字段', () => {
+  const db = createTestDb();
+  try {
+    const novelId = seedNovel(db, {
+      title: '万相之王',
+      author: '天蚕土豆',
+      chapter_count: 1,
+    });
+
+    const chapter1Id = seedChapter(db, {
+      novel_id: novelId,
+      chapter_number: 1,
+      title: '旧第一章',
+      content: '原始正文',
+      is_premium: 1,
+      word_count: 321,
+      source_chapter_id: 'old-1',
+      content_file_path: 'legacy/1.json',
+      content_preview: '旧预览',
+    });
+
+    const { replaceChapters } = loadRepository();
+    replaceChapters(novelId, [
+      {
+        chapter_number: 1,
+        title: '第1章 我有三个相宫',
+        source_chapter_id: '1',
+        content_file_path: 'chapters/2530/1.json',
+        content_preview: '第一段 第二段',
+      },
+    ]);
+
+    const chapter1 = db.prepare(
+      'SELECT id, title, content, is_premium, word_count, source_chapter_id, content_file_path, content_preview FROM chapters WHERE id = ?'
+    ).get(chapter1Id);
+
+    assert.equal(chapter1.id, chapter1Id);
+    assert.equal(chapter1.title, '第1章 我有三个相宫');
+    assert.equal(chapter1.content, '原始正文');
+    assert.equal(chapter1.is_premium, 1);
+    assert.equal(chapter1.word_count, 321);
+    assert.equal(chapter1.source_chapter_id, '1');
+    assert.equal(chapter1.content_file_path, 'chapters/2530/1.json');
+    assert.equal(chapter1.content_preview, '第一段 第二段');
+  } finally {
+    db.close();
+  }
+});
+
+test('replaceChapters 应拒绝非正整数 chapter_number', () => {
+  const db = createTestDb();
+  try {
+    const novelId = seedNovel(db, {
+      title: '万相之王',
+      author: '天蚕土豆',
+      chapter_count: 0,
+    });
+
+    const { replaceChapters } = loadRepository();
+
+    assert.throws(() => replaceChapters(novelId, [
+      { chapter_number: 0, title: '零章' },
+    ]), /chapter_number 必须是正整数/);
+
+    assert.throws(() => replaceChapters(novelId, [
+      { chapter_number: -1, title: '负一章' },
+    ]), /chapter_number 必须是正整数/);
+
+    assert.throws(() => replaceChapters(novelId, [
+      { chapter_number: Number.NaN, title: 'NaN 章' },
+    ]), /chapter_number 必须是正整数/);
   } finally {
     db.close();
   }
