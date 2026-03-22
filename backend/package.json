@@ -4,7 +4,8 @@
   "description": "中文小说阅读网站后端",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "import:biquge-json": "node import-biquge-json.js"
   },
   "dependencies": {
     "express": "^4.18.2",
