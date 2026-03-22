@@ -229,8 +229,15 @@ function replaceChapters(novelId, chapterRecords = []) {
   return normalizedRecords.length;
 }
 
+const importNovelRecord = db.transaction((record, chapterRecords = []) => {
+  const novelId = upsertNovel(record);
+  replaceChapters(novelId, chapterRecords);
+  return novelId;
+});
+
 module.exports = {
   findNovelForImport,
   upsertNovel,
   replaceChapters,
+  importNovelRecord,
 };
