@@ -28,6 +28,12 @@
         <button id="nextBtn" onclick="nextChapter()">下一章</button>
     </div>
 
+    <div id="readerSecondaryNav" class="reader-secondary-nav">
+        <button class="btn-secondary" onclick="backToNovel()">回详情</button>
+        <button class="btn-secondary" onclick="viewCatalog()">看目录</button>
+        <button class="btn-secondary" onclick="viewRecommendations()">找同类书</button>
+    </div>
+
     <!-- 设置按钮 -->
     <button class="settings-btn" onclick="toggleSettings()" title="阅读设置">⚙️</button>
 
@@ -94,6 +100,7 @@
         let totalChapters = 0;
         let saveTimeout;
         let currentChapterId = null;
+        let currentNovel = null;
 
         // 解析当前用户ID
         let currentUserId = 0;
@@ -223,6 +230,7 @@
 
                 totalChapters = novel.chapter_count;
                 currentChapterId = chapter.id;
+                currentNovel = novel;
 
                 // 显示章节内容
                 contentDiv.innerHTML = `
@@ -230,8 +238,22 @@
             <h2>${escapeHtml(chapter.title)}</h2>
             <p class="chapter-meta">第${chapter.chapter_number}章 | ${chapter.word_count}字</p>
             <div class="chapter-text">${escapeHtml(chapter.content).replace(/\n/g,'<br>')}</div>
+            <div class="reader-exit-panel">
+              <div class="reader-exit-copy">
+                <strong>读完这章，下一步可以这样走</strong>
+                <p>你可以继续下一章，也可以先回详情页看完整目录、作品简介和同类推荐。</p>
+              </div>
+              <div class="reader-exit-actions">
+                <button class="btn-secondary" onclick="backToNovel()">回详情页</button>
+                <button class="btn-secondary" onclick="viewCatalog()">查看目录</button>
+                <button class="btn-secondary" onclick="viewRecommendations()">找同类书</button>
+              </div>
+            </div>
+            <div id="membershipPrompt"></div>
           </div>
         `;
+
+                renderMembershipPrompt();
 
                 // 更新进度指示器
                 document.getElementById('progressIndicator').textContent = `第${currentChapter}章 / 共${totalChapters}章`;
@@ -295,6 +317,34 @@
 
         function backToNovel() {
             location.href = `novel.html?id=${novelId}`;
+        }
+
+        function viewCatalog() {
+            location.href = `novel.html?id=${novelId}#chapterCatalog`;
+        }
+
+        function viewRecommendations() {
+            location.href = `novel.html?id=${novelId}#recommendationsSection`;
+        }
+
+        function renderMembershipPrompt() {
+            const container = document.getElementById('membershipPrompt');
+            if (!container) return;
+
+            if (!currentNovel || !currentNovel.is_premium || currentNovel.free_chapters <= 0 || currentChapter >= currentNovel.free_chapters) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = `
+              <div class="reader-membership-prompt">
+                <div>
+                  <strong>后续章节含会员内容</strong>
+                  <p>当前作品前 ${currentNovel.free_chapters} 章可试读，开通会员后可连续阅读后续章节。</p>
+                </div>
+                <a class="btn-link" href="membership.html">去会员中心</a>
+              </div>
+            `;
         }
 
         // 监听滚动事件，自动保存进度

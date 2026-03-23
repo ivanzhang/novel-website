@@ -1549,6 +1549,16 @@ header h1 {
   margin-bottom: 80px;
 }
 
+.reader-secondary-nav {
+  max-width: 800px;
+  margin: -54px auto 90px;
+  padding: 0 15px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 .chapter-content h2 {
   margin-bottom: 10px;
   color: #2c3e50;
@@ -1565,6 +1575,55 @@ header h1 {
   line-height: 2;
   font-size: 18px;
   color: #333;
+}
+
+.reader-exit-panel {
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid #edf1f5;
+  display: grid;
+  gap: 16px;
+}
+
+.reader-exit-copy strong {
+  display: block;
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+
+.reader-exit-copy p {
+  margin: 0;
+  color: #5e6d79;
+  line-height: 1.7;
+}
+
+.reader-exit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.reader-membership-prompt {
+  margin-top: 20px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: rgba(52, 152, 219, 0.08);
+  color: #315d7f;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.reader-membership-prompt strong {
+  display: block;
+  color: #2c3e50;
+  margin-bottom: 6px;
+}
+
+.reader-membership-prompt p {
+  margin: 0;
+  line-height: 1.7;
 }
 
 /* 阅读器导航 */
@@ -1820,6 +1879,23 @@ body.night-mode .chapter-text {
 body.night-mode .reader-nav {
   background: #2d2d2d;
   border-top: 1px solid #444;
+}
+
+body.night-mode .reader-membership-prompt {
+  background: rgba(73, 127, 170, 0.18);
+  color: #d2e6f6;
+}
+
+body.night-mode .reader-membership-prompt strong {
+  color: #ffffff;
+}
+
+body.night-mode .reader-exit-copy strong {
+  color: #f3f6f8;
+}
+
+body.night-mode .reader-exit-copy p {
+  color: #c8d3db;
 }
 
 body.night-mode .settings-panel {
@@ -2313,6 +2389,15 @@ body.night-mode .comment-input-area textarea {
     padding: 20px 16px;
   }
 
+  .reader-secondary-nav {
+    margin-top: -48px;
+    justify-content: stretch;
+  }
+
+  .reader-secondary-nav .btn-secondary {
+    flex: 1 1 180px;
+  }
+
   .chapter-text {
     line-height: 2.2;
   }
@@ -2463,6 +2548,25 @@ body.night-mode .comment-input-area textarea {
   .reader-nav button {
     padding: 10px 14px;
     font-size: 14px;
+  }
+
+  .reader-secondary-nav {
+    margin-top: -42px;
+    margin-bottom: 86px;
+    padding: 0 12px;
+    flex-direction: column;
+  }
+
+  .reader-secondary-nav .btn-secondary,
+  .reader-exit-actions .btn-secondary,
+  .reader-membership-prompt .btn-link {
+    width: 100%;
+  }
+
+  .reader-exit-actions,
+  .reader-membership-prompt {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .continue-reading-list {
