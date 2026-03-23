@@ -42,7 +42,13 @@
     }
 
     function renderFallbackCover(title, className) {
-      return `<div class="${className} ${className}-fallback">${escapeHtml((title || '?').charAt(0))}</div>`;
+      return `<div class="novel-cover novel-cover-fallback ${className}-fallback">${escapeHtml((title || '?').charAt(0))}</div>`;
+    }
+
+    function handleCoverError(image) {
+      if (!image || !image.parentElement) return;
+      image.onerror = null;
+      image.parentElement.innerHTML = renderFallbackCover(image.dataset.title || '?', image.dataset.className || 'novel-detail-cover');
     }
 
     function renderCoverImage(url, title, className) {
@@ -50,8 +56,7 @@
         return renderFallbackCover(title, className);
       }
 
-      const fallbackMarkup = renderFallbackCover(title, className);
-      return `<img class="${className}" src="${escapeHtml(url)}" alt="${escapeHtml(title)}" referrerpolicy="no-referrer" onerror="this.onerror=null; this.parentElement.innerHTML='${fallbackMarkup.replace(/'/g, '&#039;')}';">`;
+      return `<img class="${className}" src="${escapeHtml(url)}" alt="${escapeHtml(title)}" data-title="${escapeHtml(title)}" data-class-name="${className}" referrerpolicy="no-referrer" onerror="handleCoverError(this)">`;
     }
 
     function buildReadingHint(novel, progress) {
