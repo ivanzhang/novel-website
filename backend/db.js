@@ -1,6 +1,6 @@
-const { DatabaseSync } = require('node:sqlite');
-
 function createNodeSqliteCompat(filename) {
+  const { DatabaseSync } = require('node:sqlite');
+
   return new (class NodeSqliteCompat {
     constructor() {
       this.db = new DatabaseSync(filename);
