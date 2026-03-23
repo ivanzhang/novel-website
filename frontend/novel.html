@@ -28,6 +28,12 @@
     const token = localStorage.getItem('token');
     const urlParams = new URLSearchParams(window.location.search);
     const novelId = urlParams.get('id');
+    const INITIAL_CHAPTER_BATCH_SIZE = 20;
+    const CHAPTER_BATCH_INCREMENT = 50;
+    const chapterListState = {
+      chapters: [],
+      visibleCount: INITIAL_CHAPTER_BATCH_SIZE,
+    };
 
     function escapeHtml(str) {
       if (!str) return '';
@@ -99,6 +105,18 @@
       return `当前共 ${novel.chapter_count} 章，主要章节需要会员权限。`;
     }
 
+    function renderChapterItems(chapters) {
+      return chapters.map((chapter) => `
+        <div class="chapter-item ${chapter.needs_premium ? 'premium' : ''}" onclick="readChapter(${chapter.chapter_number})">
+          <span class="chapter-title">第${chapter.chapter_number}章 ${escapeHtml(chapter.title)}</span>
+          <span class="chapter-info">
+            ${chapter.needs_premium ? '<span class="lock-icon">🔒 会员</span>' : '<span class="free-icon">✓ 免费</span>'}
+            ${chapter.word_count || 0}字
+          </span>
+        </div>
+      `).join('');
+    }
+
     function renderNovelDetail(novel, ratings, progress, userRating) {
       document.getElementById('novelDetail').innerHTML = `
         <section class="novel-header novel-hero">
@@ -164,27 +182,12 @@
 
     function renderChapterList(previewPayload, chapters) {
       const preview = previewPayload.preview || [];
-      const previewHTML = preview.map((chapter) => `
-        <div class="chapter-item ${chapter.needs_premium ? 'premium' : ''}" onclick="readChapter(${chapter.chapter_number})">
-          <span class="chapter-title">第${chapter.chapter_number}章 ${escapeHtml(chapter.title)}</span>
-          <span class="chapter-info">
-            ${chapter.needs_premium ? '<span class="lock-icon">🔒 会员</span>' : '<span class="free-icon">✓ 免费</span>'}
-            ${chapter.word_count || 0}字
-          </span>
-        </div>
-      `).join('');
-
-      const fullChapterHTML = token
-        ? chapters.map((chapter) => `
-            <div class="chapter-item ${chapter.needs_premium ? 'premium' : ''}" onclick="readChapter(${chapter.chapter_number})">
-              <span class="chapter-title">第${chapter.chapter_number}章 ${escapeHtml(chapter.title)}</span>
-              <span class="chapter-info">
-                ${chapter.needs_premium ? '<span class="lock-icon">🔒 会员</span>' : '<span class="free-icon">✓ 免费</span>'}
-                ${chapter.word_count || 0}字
-              </span>
-            </div>
-          `).join('')
-        : '';
+      const previewHTML = renderChapterItems(preview);
+      const visibleChapters = token
+        ? chapterListState.chapters.slice(0, chapterListState.visibleCount)
+        : [];
+      const visibleChapterHTML = token ? renderChapterItems(visibleChapters) : '';
+      const hasMoreChapters = token && chapterListState.visibleCount < chapterListState.chapters.length;
 
       document.getElementById('chapterList').innerHTML = `
         <section class="chapter-list-container chapter-preview" id="chapterCatalog">
@@ -203,18 +206,40 @@
             }
           </div>
           ${token ? `
-            <div class="chapter-list-full">
+            <div class="chapter-list-panel">
               <div class="chapter-list-header">
                 <div>
                   <p class="novel-kicker">完整目录</p>
                   <h3>继续挑章节或直接续读</h3>
                 </div>
+                <p class="chapter-list-copy chapter-list-progress">当前已显示 ${visibleChapters.length} / ${chapterListState.chapters.length} 章</p>
               </div>
-              <div class="chapter-list">${fullChapterHTML}</div>
+              <div class="chapter-list">${visibleChapterHTML}</div>
+              <div class="chapter-list-actions chapter-list-load-more">
+                ${hasMoreChapters ? `<button class="btn-secondary" onclick="loadMoreChapters()">再加载 ${Math.min(CHAPTER_BATCH_INCREMENT, chapterListState.chapters.length - chapterListState.visibleCount)} 章</button>` : ''}
+                ${chapterListState.chapters.length > INITIAL_CHAPTER_BATCH_SIZE && chapterListState.visibleCount > INITIAL_CHAPTER_BATCH_SIZE ? '<button class="btn-link chapter-collapse-btn" onclick="collapseChapterList()">收起目录</button>' : ''}
+              </div>
             </div>
           ` : ''}
         </section>
       `;
+    }
+
+    function loadMoreChapters() {
+      chapterListState.visibleCount = Math.min(
+        chapterListState.visibleCount + CHAPTER_BATCH_INCREMENT,
+        chapterListState.chapters.length
+      );
+      renderChapterList({ preview: chapterListState.preview, chapter_count: chapterListState.chapterCount }, chapterListState.chapters);
+    }
+
+    function collapseChapterList() {
+      chapterListState.visibleCount = INITIAL_CHAPTER_BATCH_SIZE;
+      renderChapterList({ preview: chapterListState.preview, chapter_count: chapterListState.chapterCount }, chapterListState.chapters);
+      const catalog = document.getElementById('chapterCatalog');
+      if (catalog) {
+        catalog.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
 
     function renderRecommendations(recommendationPayload) {
@@ -305,6 +330,11 @@
           progress = responses[5].ok ? await responses[5].json() : null;
           userRating = responses[6].ok ? await responses[6].json() : { rating: 0 };
         }
+
+        chapterListState.preview = previewPayload.preview || [];
+        chapterListState.chapterCount = previewPayload.chapter_count || novel.chapter_count || 0;
+        chapterListState.chapters = chapters;
+        chapterListState.visibleCount = INITIAL_CHAPTER_BATCH_SIZE;
 
         renderNovelDetail(novel, ratings, progress, userRating);
         renderChapterList(previewPayload, chapters);

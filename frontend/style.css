@@ -1447,10 +1447,25 @@ header h1 {
   flex-wrap: wrap;
 }
 
-.chapter-list-full {
+.chapter-list-panel {
   margin-top: 28px;
   padding-top: 24px;
   border-top: 1px solid #edf1f5;
+}
+
+.chapter-list-progress {
+  font-weight: 600;
+  color: #5e6d79;
+}
+
+.chapter-list-load-more {
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.chapter-collapse-btn {
+  padding-inline: 0;
+  background: transparent;
 }
 
 .novel-recommendations {
