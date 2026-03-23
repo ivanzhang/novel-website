@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     volumes:
-      - db-data:/app/data
+      - ./backend/novels.db:/app/data/novels.db
       - ./storage/json/biquge:/app/storage/json/biquge:ro
     environment:
       - JWT_SECRET=${JWT_SECRET:?请设置 JWT_SECRET 环境变量}
@@ -36,6 +36,3 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
-
-volumes:
-  db-data:

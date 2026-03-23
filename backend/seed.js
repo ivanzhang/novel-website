@@ -1,5 +1,9 @@
 const db = require('./db');
 
+function shouldSeedSampleData() {
+  return process.env.ENABLE_SAMPLE_SEED === 'true' || process.env.NODE_ENV === 'test';
+}
+
 // 数据迁移：将现有小说拆分为章节
 function migrateNovelsToChapters() {
   const novels = db.prepare("SELECT * FROM novels WHERE chapter_count = 0 AND content IS NOT NULL AND content != ''").all();
@@ -48,9 +52,11 @@ function seedSampleData() {
 }
 
 function runSeed() {
-  seedSampleData();
+  if (shouldSeedSampleData()) {
+    seedSampleData();
+  }
   migrateNovelsToChapters();
   console.log('数据库初始化完成');
 }
 
-module.exports = { runSeed, migrateNovelsToChapters };
+module.exports = { runSeed, migrateNovelsToChapters, shouldSeedSampleData };
