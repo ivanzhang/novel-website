@@ -28,20 +28,20 @@
         <button id="nextBtn" onclick="nextChapter()">下一章</button>
     </div>
 
-    <div id="readerSecondaryNav" class="reader-secondary-nav">
-        <button class="btn-secondary" onclick="backToNovel()">回详情</button>
-        <button class="btn-secondary" onclick="viewCatalog()">看目录</button>
-        <button class="btn-secondary" onclick="viewRecommendations()">找同类书</button>
+    <div id="readerSecondaryNav" class="reader-secondary-nav reader-controls-hidden">
+        <button class="reader-secondary-action" onclick="backToNovel()">回详情</button>
+        <button class="reader-secondary-action" onclick="viewCatalog()">看目录</button>
+        <button class="reader-secondary-action" onclick="viewRecommendations()">找同类书</button>
     </div>
 
     <!-- 设置按钮 -->
-    <button class="settings-btn" onclick="toggleSettings()" title="阅读设置">⚙️</button>
+    <button class="settings-btn reader-controls-hidden" onclick="toggleSettings()" title="阅读设置">⚙️</button>
 
     <!-- 书签按钮 -->
-    <button class="bookmark-btn" onclick="toggleBookmarkPanel()" title="书签">🔖</button>
+    <button class="bookmark-btn reader-controls-hidden" onclick="toggleBookmarkPanel()" title="书签">🔖</button>
 
     <!-- 评论按钮 -->
-    <button class="comment-btn" onclick="toggleCommentPanel()" title="评论">💬</button>
+    <button class="comment-btn reader-controls-hidden" onclick="toggleCommentPanel()" title="评论">💬</button>
 
     <!-- 设置面板 -->
     <div id="settingsPanel" class="settings-panel">
@@ -244,9 +244,9 @@
                 <p>你可以继续下一章，也可以先回详情页看完整目录、作品简介和同类推荐。</p>
               </div>
               <div class="reader-exit-actions">
-                <button class="btn-secondary" onclick="backToNovel()">回详情页</button>
-                <button class="btn-secondary" onclick="viewCatalog()">查看目录</button>
-                <button class="btn-secondary" onclick="viewRecommendations()">找同类书</button>
+                <button class="reader-secondary-action" onclick="backToNovel()">回详情页</button>
+                <button class="reader-secondary-action" onclick="viewCatalog()">查看目录</button>
+                <button class="reader-secondary-action" onclick="viewRecommendations()">找同类书</button>
               </div>
             </div>
             <div id="membershipPrompt"></div>
@@ -267,6 +267,7 @@
 
                 // 滚动到顶部
                 window.scrollTo(0,0);
+                updateReaderChromeVisibility();
 
                 // 更新URL
                 history.replaceState(null,'',`reader.html?novelId=${novelId}&chapter=${currentChapter}`);
@@ -347,6 +348,18 @@
             `;
         }
 
+        function updateReaderChromeVisibility() {
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = maxScroll > 0 ? window.scrollY / maxScroll : 0;
+            const showTopActions = progress >= 0.1;
+            const showTrailingActions = progress >= 0.9;
+
+            document.getElementById('readerSecondaryNav')?.classList.toggle('reader-controls-hidden',!showTopActions);
+            document.querySelector('.settings-btn')?.classList.toggle('reader-controls-hidden',!showTrailingActions);
+            document.querySelector('.bookmark-btn')?.classList.toggle('reader-controls-hidden',!showTrailingActions);
+            document.querySelector('.comment-btn')?.classList.toggle('reader-controls-hidden',!showTrailingActions);
+        }
+
         // 监听滚动事件，自动保存进度
         window.addEventListener('scroll',() => {
             clearTimeout(saveTimeout);
@@ -354,6 +367,7 @@
                 const scrollPercent = Math.round((window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100);
                 saveProgress(currentChapterId,scrollPercent);
             },2000);
+            updateReaderChromeVisibility();
         });
 
         // 键盘快捷键
