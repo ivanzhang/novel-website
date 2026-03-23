@@ -41,6 +41,19 @@
       }
     }
 
+    function renderFallbackCover(title, className) {
+      return `<div class="${className} ${className}-fallback">${escapeHtml((title || '?').charAt(0))}</div>`;
+    }
+
+    function renderCoverImage(url, title, className) {
+      if (!url) {
+        return renderFallbackCover(title, className);
+      }
+
+      const fallbackMarkup = renderFallbackCover(title, className);
+      return `<img class="${className}" src="${escapeHtml(url)}" alt="${escapeHtml(title)}" referrerpolicy="no-referrer" onerror="this.onerror=null; this.parentElement.innerHTML='${fallbackMarkup.replace(/'/g, '&#039;')}';">`;
+    }
+
     function buildReadingHint(novel, progress) {
       if (progress && progress.chapter_number) {
         return `你已读到第 ${progress.chapter_number} 章，现在可以继续追更。`;
@@ -85,10 +98,7 @@
       document.getElementById('novelDetail').innerHTML = `
         <section class="novel-header novel-hero">
           <div class="novel-hero-cover">
-            ${novel.cover_url
-              ? `<img class="novel-detail-cover" src="${escapeHtml(novel.cover_url)}" alt="${escapeHtml(novel.title)}" referrerpolicy="no-referrer">`
-              : `<div class="novel-detail-cover novel-detail-cover-fallback">${escapeHtml(novel.title.charAt(0))}</div>`
-            }
+            ${renderCoverImage(novel.cover_url, novel.title, 'novel-detail-cover')}
           </div>
           <div class="novel-hero-body">
             <p class="novel-kicker">作品详情</p>
@@ -213,10 +223,7 @@
       const cards = recommendations.map((novel) => `
         <article class="recommendation-card" onclick="location.href='novel.html?id=${novel.id}'">
           <div class="recommendation-cover-wrap">
-            ${novel.cover_url
-              ? `<img class="recommendation-cover" src="${escapeHtml(novel.cover_url)}" alt="${escapeHtml(novel.title)}" referrerpolicy="no-referrer">`
-              : `<div class="recommendation-cover recommendation-cover-fallback">${escapeHtml(novel.title.charAt(0))}</div>`
-            }
+            ${renderCoverImage(novel.cover_url, novel.title, 'recommendation-cover')}
           </div>
           <div class="recommendation-body">
             <h4>${escapeHtml(novel.title)}</h4>
