@@ -3,6 +3,42 @@ const router = express.Router();
 const db = require('../db');
 const { authenticateToken } = require('../auth');
 
+function buildMemberProfile(user = {}) {
+  const expireDate = user.member_expire ? new Date(user.member_expire) : null;
+  const now = new Date();
+  const activeMember = Boolean(user.is_member && expireDate && expireDate.getTime() > now.getTime());
+  const daysRemaining = activeMember
+    ? Math.max(0, Math.ceil((expireDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)))
+    : 0;
+
+  return {
+    id: user.id,
+    username: user.username,
+    is_member: user.is_member,
+    member_expire: user.member_expire,
+    member_level: activeMember ? '黄金会员' : '普通用户',
+    days_remaining: daysRemaining,
+    status_text: activeMember ? `会员有效中，剩余 ${daysRemaining} 天` : '当前为普通用户，可开通会员解锁 VIP 章节',
+  };
+}
+
+function buildMembershipPlans() {
+  return [
+    { id: 'monthly', title: '月度会员', months: 1, price: 30, tagline: '适合短期追更，立刻解锁全部 VIP 章节', recommended: false },
+    { id: 'quarterly', title: '季度会员', months: 3, price: 80, tagline: '性价比更高，适合稳定阅读', recommended: true },
+    { id: 'yearly', title: '年度会员', months: 12, price: 288, tagline: '全年畅读，续费频率最低', recommended: false },
+  ];
+}
+
+function buildMembershipBenefits() {
+  return [
+    { id: 'vip-access', title: '解锁 VIP 章节', description: '开通后可直接阅读站内会员章节。' },
+    { id: 'history-sync', title: '阅读进度同步', description: '自动保存阅读记录，回来继续读。' },
+    { id: 'bookshelf', title: '书签与收藏管理', description: '保留阅读位置和重点章节，追更更省心。' },
+    { id: 'new-features', title: '优先体验新能力', description: '后续会员体验优化会优先面向会员开放。' },
+  ];
+}
+
 // 获取用户对指定小说的阅读进度
 router.get('/reading-progress/:novelId', authenticateToken, (req, res) => {
   const progress = db.prepare(`
@@ -67,6 +103,46 @@ router.get('/reading-stats', authenticateToken, (req, res) => {
   `).get(req.user.id);
 
   res.json(stats || { total_time: 0, novels_read: 0, total_sessions: 0 });
+});
+
+router.get('/member-center', authenticateToken, (req, res) => {
+  const user = db.prepare('SELECT id, username, is_member, member_expire FROM users WHERE id = ?').get(req.user.id);
+  const stats = db.prepare(`
+    SELECT
+      COALESCE(SUM(reading_time), 0) as total_time,
+      COUNT(DISTINCT novel_id) as novels_read,
+      COUNT(*) as total_sessions
+    FROM reading_progress
+    WHERE user_id = ?
+  `).get(req.user.id);
+  const recentReads = db.prepare(`
+    SELECT
+      rp.novel_id,
+      rp.chapter_id,
+      rp.last_read_at,
+      n.title as novel_title,
+      n.author,
+      n.cover_url,
+      c.chapter_number,
+      c.title as chapter_title
+    FROM reading_progress rp
+    JOIN novels n ON rp.novel_id = n.id
+    JOIN chapters c ON rp.chapter_id = c.id
+    WHERE rp.user_id = ?
+    ORDER BY rp.last_read_at DESC
+    LIMIT 5
+  `).all(req.user.id);
+
+  res.json({
+    profile: {
+      ...buildMemberProfile(user),
+      benefit_count: buildMembershipBenefits().length,
+    },
+    stats: stats || { total_time: 0, novels_read: 0, total_sessions: 0 },
+    recent_reads: recentReads,
+    plans: buildMembershipPlans(),
+    benefits: buildMembershipBenefits(),
+  });
 });
 
 // ========== 书签功能 ==========

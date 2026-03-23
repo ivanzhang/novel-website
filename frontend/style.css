@@ -16,6 +16,16 @@ body {
   padding: 20px;
 }
 
+.search-shell,
+.continue-reading-shell {
+  margin-bottom: 20px;
+}
+
+.mobile-search-toggle,
+.continue-reading-toggle {
+  display: none;
+}
+
 /* 搜索框 */
 .search-container {
   display: flex;
@@ -182,6 +192,42 @@ header h1 {
   min-width: 0;
 }
 
+.category-intro {
+  display: none;
+  background:
+    radial-gradient(circle at top right, rgba(201, 155, 103, 0.18), transparent 30%),
+    linear-gradient(180deg, #fff8ee, #fffdf8);
+  border: 1px solid rgba(91, 66, 41, 0.08);
+  border-radius: 22px;
+  padding: 22px 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 12px 28px rgba(73, 49, 27, 0.06);
+}
+
+.category-intro-kicker {
+  color: #a46831;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.category-intro-title {
+  color: #2f2014;
+  margin-bottom: 10px;
+}
+
+.category-intro-copy,
+.category-intro-meta {
+  color: #73553b;
+  line-height: 1.8;
+}
+
+.category-intro-meta {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
 .catalog-header {
   display: flex;
   justify-content: space-between;
@@ -257,6 +303,626 @@ header h1 {
   color: white;
   box-shadow: 0 8px 18px rgba(52, 152, 219, 0.24);
   transform: translateX(4px);
+}
+
+.member-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.member-sidebar {
+  position: sticky;
+  top: 20px;
+}
+
+.member-sidebar-card {
+  background:
+    radial-gradient(circle at top right, rgba(214, 172, 122, 0.24), transparent 42%),
+    linear-gradient(160deg, #1d2431, #3c2e22 72%, #5f4834);
+  color: #f7efe4;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 18px 40px rgba(29, 36, 49, 0.2);
+  margin-bottom: 16px;
+}
+
+.member-sidebar-kicker,
+.member-section-kicker,
+.member-hero-eyebrow,
+.benefit-badge,
+.plan-badge,
+.member-summary-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+}
+
+.member-sidebar-card h2 {
+  font-size: 28px;
+  margin: 10px 0 12px;
+}
+
+.member-sidebar-copy {
+  color: rgba(247, 239, 228, 0.82);
+  line-height: 1.7;
+}
+
+.member-sidebar-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.member-sidebar-stat,
+.member-account-fact {
+  background: rgba(255, 247, 232, 0.08);
+  border: 1px solid rgba(255, 239, 220, 0.12);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.member-sidebar-stat-label,
+.member-account-fact span {
+  display: block;
+  color: rgba(247, 239, 228, 0.68);
+  font-size: 12px;
+  margin-bottom: 6px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.member-sidebar-stat strong,
+.member-account-fact strong {
+  display: block;
+  color: #fff8ef;
+  line-height: 1.5;
+}
+
+.member-account-facts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.member-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14px;
+  width: 100%;
+  border: 1px solid rgba(255, 239, 220, 0.18);
+  background: rgba(255, 247, 232, 0.08);
+  color: #fff8ef;
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.member-mobile-status {
+  display: none;
+}
+
+.member-sidebar-copy,
+.member-sidebar-summary,
+.member-account-facts {
+  display: none;
+}
+
+.member-sidebar.expanded .member-sidebar-copy {
+  display: block;
+}
+
+.member-sidebar.expanded .member-sidebar-summary {
+  display: grid;
+}
+
+.member-sidebar.expanded .member-account-facts {
+  display: grid;
+}
+
+.member-nav {
+  background: #fffdf8;
+  border: 1px solid rgba(91, 66, 41, 0.08);
+  border-radius: 22px;
+  padding: 14px;
+  box-shadow: 0 12px 32px rgba(73, 49, 27, 0.08);
+}
+
+.member-nav-link {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #49311b;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.member-nav-link + .member-nav-link {
+  margin-top: 8px;
+}
+
+.member-nav-link:hover {
+  background: rgba(201, 155, 103, 0.12);
+}
+
+.member-nav-link.active {
+  background: linear-gradient(135deg, #c99b67, #9f7142);
+  color: white;
+  transform: translateX(4px);
+  box-shadow: 0 12px 24px rgba(159, 113, 66, 0.22);
+}
+
+.member-main {
+  min-width: 0;
+}
+
+.member-hero,
+.member-panel,
+.member-section,
+.member-summary-card,
+.plan-card,
+.benefit-card,
+.member-history-item {
+  background: #fffdf8;
+  border: 1px solid rgba(91, 66, 41, 0.08);
+  box-shadow: 0 14px 30px rgba(73, 49, 27, 0.08);
+}
+
+.member-hero {
+  border-radius: 28px;
+  padding: 30px 32px;
+  margin-bottom: 20px;
+  background:
+    radial-gradient(circle at top right, rgba(212, 173, 122, 0.2), transparent 30%),
+    linear-gradient(135deg, #fff7e8, #fffdf8 45%, #f8efe0);
+}
+
+.member-hero h2 {
+  font-size: 34px;
+  color: #2f2014;
+  margin: 10px 0 12px;
+}
+
+.member-hero-copy {
+  max-width: 720px;
+  color: #73553b;
+  line-height: 1.8;
+}
+
+.member-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.member-hero-primary,
+.member-hero-secondary,
+.member-history-action,
+.member-panel-link {
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.member-hero-primary,
+.member-history-action {
+  background: linear-gradient(135deg, #ad7642, #8e5c34);
+  color: white;
+  padding: 12px 18px;
+  border-radius: 999px;
+  font-size: 15px;
+  box-shadow: 0 12px 24px rgba(173, 118, 66, 0.22);
+}
+
+.member-hero-secondary {
+  color: #7b5837;
+  background: rgba(201, 155, 103, 0.12);
+  padding: 12px 18px;
+  border-radius: 999px;
+}
+
+.member-section {
+  display: none;
+  border-radius: 24px;
+  padding: 24px;
+}
+
+.member-section.active {
+  display: block;
+}
+
+.member-section-header,
+.member-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.member-section-header h3,
+.member-panel-header h4 {
+  color: #2f2014;
+}
+
+.member-panel-link {
+  background: transparent;
+  color: #a46831;
+  font-weight: 600;
+}
+
+.member-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.member-summary-card {
+  border-radius: 20px;
+  padding: 20px;
+}
+
+.member-summary-card.accent {
+  background: linear-gradient(140deg, #2d231b, #5b4636);
+  color: #f8efe3;
+}
+
+.member-summary-card h4 {
+  font-size: 24px;
+  margin: 10px 0 8px;
+}
+
+.member-summary-value {
+  color: #7b5837;
+  line-height: 1.6;
+}
+
+.member-summary-card.accent .member-summary-value,
+.member-summary-card.accent .member-summary-label {
+  color: rgba(248, 239, 227, 0.8);
+}
+
+.member-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.member-panel {
+  border-radius: 22px;
+  padding: 22px;
+}
+
+.member-history-list,
+.benefit-list,
+.membership-plans.enhanced,
+.benefit-list.compact {
+  display: grid;
+  gap: 16px;
+}
+
+.member-history-item {
+  border-radius: 20px;
+  padding: 18px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.member-history-item.compact {
+  padding: 16px 18px;
+}
+
+.member-history-copy h4 {
+  color: #2f2014;
+  margin-bottom: 8px;
+}
+
+.member-history-copy p {
+  color: #7b6653;
+  line-height: 1.7;
+}
+
+.benefit-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.benefit-list.compact {
+  grid-template-columns: 1fr;
+}
+
+.benefit-card {
+  border-radius: 20px;
+  padding: 20px;
+  background: linear-gradient(180deg, #fffdf8, #faf1e2);
+}
+
+.benefit-card h4 {
+  color: #2f2014;
+  margin: 10px 0 8px;
+}
+
+.benefit-card p {
+  color: #6f5a47;
+  line-height: 1.7;
+}
+
+.membership-plans.enhanced {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.plan-card {
+  border-radius: 22px;
+  padding: 24px;
+  position: relative;
+}
+
+.plan-card.recommended {
+  background: linear-gradient(160deg, #fff2de, #fffdf8 48%, #f8e8ce);
+  border-color: rgba(173, 118, 66, 0.22);
+  transform: translateY(-4px);
+}
+
+.plan-badge {
+  color: #9d6b3b;
+}
+
+.plan-card h3 {
+  color: #2f2014;
+  margin: 10px 0 12px;
+}
+
+.plan-card .price {
+  font-size: 36px;
+  color: #8e5c34;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.plan-card p {
+  color: #6f5a47;
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+.member-message {
+  margin-bottom: 18px;
+}
+
+.member-message-card {
+  border-radius: 18px;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.member-message-card.success {
+  background: #edf8f0;
+  color: #26633b;
+}
+
+.member-message-card.error {
+  background: #fff1ef;
+  color: #ab3f31;
+}
+
+.member-empty {
+  color: #7b6653;
+  line-height: 1.8;
+}
+
+@media (max-width: 1024px) {
+  .member-shell,
+  .catalog-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .member-sidebar,
+  .category-sidebar {
+    position: static;
+  }
+
+  .member-summary-grid,
+  .member-panel-grid,
+  .benefit-list,
+  .membership-plans.enhanced {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .member-summary-grid,
+  .member-panel-grid,
+  .benefit-list,
+  .membership-plans.enhanced,
+  .novel-list {
+    grid-template-columns: 1fr;
+  }
+
+  .member-history-item,
+  .member-message-card,
+  .catalog-header,
+  .search-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .member-hero {
+    padding: 24px 20px;
+  }
+
+  .member-hero h2 {
+    font-size: 28px;
+  }
+
+  .member-sidebar {
+    display: grid;
+    gap: 12px;
+  }
+
+  .member-nav {
+    order: 1;
+    position: sticky;
+    top: 12px;
+    z-index: 5;
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 10px;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .member-main {
+    display: grid;
+    gap: 12px;
+  }
+
+  .member-nav-link {
+    width: auto;
+    flex: 0 0 auto;
+    margin-top: 0;
+    min-height: 42px;
+    padding: 10px 14px;
+  }
+
+  .member-nav-link + .member-nav-link {
+    margin-top: 0;
+  }
+
+  .member-nav-link.active {
+    transform: none;
+  }
+
+  .member-sidebar-card {
+    order: 3;
+    padding: 14px 16px;
+    margin-bottom: 0;
+    border-radius: 18px;
+  }
+
+  .member-mobile-status {
+    order: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: #fffdf8;
+    border: 1px solid rgba(91, 66, 41, 0.08);
+    border-radius: 18px;
+    padding: 12px 14px;
+    box-shadow: 0 12px 32px rgba(73, 49, 27, 0.08);
+  }
+
+  .member-mobile-status-copy {
+    min-width: 0;
+  }
+
+  .member-mobile-status-copy strong {
+    display: block;
+    color: #2f2014;
+    margin-bottom: 4px;
+    font-size: 14px;
+  }
+
+  .member-mobile-status-copy span {
+    display: block;
+    color: #7b6653;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .member-mobile-status-action {
+    flex: 0 0 auto;
+    border: none;
+    background: rgba(201, 155, 103, 0.12);
+    color: #7b5837;
+    border-radius: 999px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  .member-sidebar-card h2 {
+    font-size: 18px;
+    margin: 6px 0 4px;
+  }
+
+  .member-sidebar-copy,
+  .member-account-facts {
+    display: none;
+  }
+
+  .member-sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .member-sidebar.expanded .member-sidebar-copy,
+  .member-sidebar.expanded .member-account-facts {
+    display: grid;
+  }
+
+  .member-sidebar.expanded .member-sidebar-copy {
+    display: block;
+  }
+
+  .member-sidebar-summary {
+    grid-template-columns: 1fr 1fr;
+    margin-top: 10px;
+    gap: 8px;
+  }
+
+  .member-summary-grid {
+    gap: 12px;
+  }
+
+  .member-sidebar-stat,
+  .member-account-fact {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .member-sidebar-stat strong,
+  .member-account-fact strong {
+    font-size: 13px;
+  }
+
+  .member-hero {
+    display: none;
+  }
+
+  .member-section {
+    padding: 18px 16px;
+    border-radius: 20px;
+  }
+
+  body[data-member-section="history"] .member-sidebar-card,
+  body[data-member-section="benefits"] .member-sidebar-card,
+  body[data-member-section="plans"] .member-sidebar-card {
+    display: none;
+  }
+
+  .member-section,
+  .member-panel,
+  .member-history-item,
+  .benefit-card,
+  .plan-card {
+    scroll-margin-top: 76px;
+  }
 }
 
 .category-count {
@@ -589,6 +1255,21 @@ header h1 {
   background: #2980b9;
 }
 
+.btn-secondary,
+.btn-link {
+  padding: 12px 20px;
+  background: rgba(52, 152, 219, 0.1);
+  color: #2c6da3;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 15px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* 章节列表 */
 .chapter-list-container {
   background: white;
@@ -648,6 +1329,196 @@ header h1 {
   color: #27ae60;
   font-size: 16px;
   font-weight: bold;
+}
+
+.novel-hero {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  background:
+    radial-gradient(circle at top right, rgba(52, 152, 219, 0.12), transparent 28%),
+    linear-gradient(135deg, #ffffff, #f8fbff 55%, #eef5fb);
+}
+
+.novel-hero-cover {
+  min-width: 0;
+}
+
+.novel-hero-body {
+  min-width: 0;
+}
+
+.novel-kicker {
+  color: #7f8c8d;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.novel-category-link {
+  color: #2c6da3;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.novel-reading-hint {
+  background: rgba(52, 152, 219, 0.08);
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin: 18px 0 18px;
+  color: #315d7f;
+}
+
+.novel-reading-hint strong {
+  display: block;
+  color: #2c3e50;
+  margin-bottom: 6px;
+}
+
+.novel-reading-hint p {
+  margin: 0;
+  line-height: 1.7;
+}
+
+.novel-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.novel-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.novel-status-card {
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(44, 109, 163, 0.1);
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.novel-status-card strong {
+  display: block;
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+
+.novel-status-card p {
+  margin: 0;
+  color: #5e6d79;
+  line-height: 1.6;
+}
+
+.novel-status-label {
+  display: block;
+  color: #7f8c8d;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.chapter-list-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.chapter-list-copy {
+  color: #7f8c8d;
+  max-width: 360px;
+  text-align: right;
+  line-height: 1.6;
+}
+
+.chapter-list-actions {
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chapter-list-full {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #edf1f5;
+}
+
+.novel-recommendations {
+  margin-top: 30px;
+}
+
+.recommendation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.recommendation-card {
+  background: #f8fbff;
+  border: 1px solid rgba(44, 109, 163, 0.08);
+  border-radius: 18px;
+  padding: 16px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.recommendation-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(44, 109, 163, 0.12);
+}
+
+.recommendation-cover-wrap {
+  margin-bottom: 12px;
+}
+
+.recommendation-cover {
+  width: 100%;
+  max-width: 120px;
+  height: 160px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.14);
+}
+
+.recommendation-cover-fallback {
+  width: 120px;
+  height: 160px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 40px;
+  font-weight: bold;
+}
+
+.recommendation-body h4 {
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+
+.recommendation-meta,
+.recommendation-foot {
+  color: #7f8c8d;
+  font-size: 13px;
+}
+
+.recommendation-copy {
+  color: #5e6d79;
+  line-height: 1.7;
+  margin: 10px 0 12px;
 }
 
 /* 阅读器 */
@@ -1159,12 +2030,36 @@ body.night-mode .comment-input-area textarea {
 
 /* 响应式设计 - 平板 */
 @media (max-width: 768px) {
+  .home-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .home-container .search-shell {
+    order: 1;
+  }
+
+  .home-container .catalog-layout {
+    order: 2;
+  }
+
+  .home-container #searchResults {
+    order: 3;
+  }
+
+  .home-container .continue-reading-shell {
+    order: 4;
+  }
+
   .catalog-layout {
     grid-template-columns: 1fr;
   }
 
   .category-sidebar {
-    position: static;
+    position: sticky;
+    top: 12px;
+    z-index: 4;
   }
 
   .catalog-header {
@@ -1190,6 +2085,143 @@ body.night-mode .comment-input-area textarea {
   .search-container {
     flex-direction: column;
     max-width: 100%;
+  }
+
+  .search-shell,
+  .continue-reading-shell {
+    margin-bottom: 14px;
+  }
+
+  .home-container .catalog-main {
+    display: grid;
+    gap: 14px;
+  }
+
+  .home-container .catalog-header {
+    margin-bottom: 0;
+  }
+
+  .home-container .category-intro {
+    margin-bottom: 0;
+  }
+
+  .home-container .pagination {
+    margin-top: 10px;
+  }
+
+  .mobile-search-toggle,
+  .continue-reading-toggle {
+    display: inline-flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    border: none;
+    background: #fff;
+    color: #2c3e50;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 15px;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+    cursor: pointer;
+  }
+
+  .mobile-search-toggle {
+    display: none;
+  }
+
+  .mobile-search-toggle::after,
+  .continue-reading-toggle::after {
+    content: '展开';
+    color: #7f8c8d;
+    font-size: 13px;
+  }
+
+  .search-shell.expanded .mobile-search-toggle::after,
+  .continue-reading-shell.expanded .continue-reading-toggle::after {
+    content: '收起';
+  }
+
+  .continue-reading-shell #continueReading {
+    display: none;
+  }
+
+  .continue-reading-shell.expanded #continueReading {
+    display: flex;
+  }
+
+  .search-shell .search-container {
+    display: flex;
+    background: #fff;
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 10px 22px rgba(0,0,0,0.08);
+    margin-bottom: 0;
+  }
+
+  .continue-reading-shell.expanded #continueReading {
+    flex-direction: column;
+  }
+
+  .category-sidebar-inner {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+    box-shadow: 0 10px 22px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+
+  .category-sidebar-inner h3,
+  .category-current-label {
+    display: none;
+  }
+
+  .category-link {
+    width: 100%;
+    margin-bottom: 0;
+    min-height: 42px;
+    min-width: 0;
+    padding: 10px 12px;
+  }
+
+  .category-link.active {
+    transform: none;
+  }
+
+  .category-link span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .novel-list,
+  .continue-reading-list {
+    grid-template-columns: 1fr;
+  }
+
+  .novel-card {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+  }
+
+  .novel-cover {
+    height: 100%;
+    min-height: 132px;
+    font-size: 38px;
+  }
+
+  .novel-card-info {
+    padding: 12px;
+    min-width: 0;
+  }
+
+  .novel-card-info h3 {
+    font-size: 15px;
+    line-height: 1.4;
+  }
+
+  .novel-card-info .novel-desc {
+    -webkit-line-clamp: 3;
   }
 
   .nav {
@@ -1231,6 +2263,31 @@ body.night-mode .comment-input-area textarea {
     gap: 15px;
   }
 
+  .novel-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .novel-detail-cover,
+  .recommendation-cover,
+  .recommendation-cover-fallback {
+    max-width: none;
+  }
+
+  .novel-status-grid,
+  .recommendation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chapter-list-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .chapter-list-copy {
+    text-align: left;
+    max-width: none;
+  }
+
   .continue-btn {
     width: 100%;
     text-align: center;
@@ -1268,18 +2325,22 @@ body.night-mode .comment-input-area textarea {
 
 /* 响应式设计 - 手机 */
 @media (max-width: 480px) {
+  .home-container {
+    gap: 10px;
+  }
+
   header h1 {
     font-size: 1.2em;
   }
 
   .novel-list {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
     gap: 12px;
   }
 
   .novel-cover {
-    height: 100px;
-    font-size: 40px;
+    min-height: 124px;
+    font-size: 34px;
   }
 
   .novel-card-info {
@@ -1288,6 +2349,66 @@ body.night-mode .comment-input-area textarea {
 
   .novel-card-info h3 {
     font-size: 14px;
+  }
+
+  .member-hero {
+    display: none;
+  }
+
+  .member-sidebar-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .member-nav {
+    top: 8px;
+    gap: 8px;
+  }
+
+  .member-nav-link {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .member-sidebar-card {
+    padding: 12px;
+  }
+
+  .category-sidebar-inner {
+    padding: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .search-shell .search-container {
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .member-mobile-status {
+    padding: 10px 12px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .member-mobile-status-action {
+    width: 100%;
+    justify-content: center;
+    display: inline-flex;
+  }
+
+  .novel-header,
+  .chapter-list-container {
+    padding: 20px 16px;
+  }
+
+  .novel-hero-actions,
+  .chapter-list-actions {
+    flex-direction: column;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-link {
+    width: 100%;
   }
 
   .chapter-text {

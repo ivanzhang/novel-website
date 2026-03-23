@@ -83,6 +83,79 @@ router.get('/novels/:id', (req, res) => {
   res.json(novel);
 });
 
+router.get('/novels/:id/chapter-preview', (req, res) => {
+  const novel = db.prepare(`
+    SELECT id, is_premium, free_chapters, chapter_count
+    FROM novels
+    WHERE id = ?
+  `).get(req.params.id);
+
+  if (!novel) {
+    return res.status(404).json({ error: '小说不存在' });
+  }
+
+  const limit = Math.min(12, Math.max(3, parseInt(req.query.limit, 10) || 6));
+  const preview = db.prepare(`
+    SELECT id, chapter_number, title, is_premium, word_count, created_at
+    FROM chapters
+    WHERE novel_id = ?
+    ORDER BY chapter_number ASC
+    LIMIT ?
+  `).all(req.params.id, limit).map((chapter) => ({
+    ...chapter,
+    needs_premium: checkPremiumAccess(chapter, novel),
+  }));
+
+  res.json({
+    novel_id: novel.id,
+    chapter_count: novel.chapter_count,
+    preview,
+  });
+});
+
+router.get('/novels/:id/recommendations', (req, res) => {
+  const novel = db.prepare(`
+    SELECT id, primary_category, source_category
+    FROM novels
+    WHERE id = ?
+  `).get(req.params.id);
+
+  if (!novel) {
+    return res.status(404).json({ error: '小说不存在' });
+  }
+
+  const category = novel.primary_category || novel.source_category;
+
+  if (!category) {
+    return res.json({ novel_id: parseInt(req.params.id, 10), recommendations: [] });
+  }
+
+  const recommendations = db.prepare(`
+    SELECT
+      id,
+      title,
+      author,
+      is_premium,
+      chapter_count,
+      description,
+      free_chapters,
+      created_at,
+      primary_category,
+      source_category,
+      cover_url
+    FROM novels
+    WHERE id != ?
+      AND primary_category = ?
+    ORDER BY ${buildNovelOrderClause('popular')}
+    LIMIT 6
+  `).all(req.params.id, category);
+
+  res.json({
+    novel_id: parseInt(req.params.id, 10),
+    recommendations,
+  });
+});
+
 // 获取小说的章节列表（需登录）
 router.get('/novels/:novelId/chapters', authenticateToken, (req, res) => {
   const novel = db.prepare('SELECT is_premium, free_chapters FROM novels WHERE id = ?').get(req.params.novelId);

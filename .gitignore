@@ -6,3 +6,4 @@ storage*
 storage.zip
 novels.db*
 **/novels.db*
+.env

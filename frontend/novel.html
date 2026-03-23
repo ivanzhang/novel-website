@@ -20,6 +20,7 @@
   <div class="container">
     <div id="novelDetail"></div>
     <div id="chapterList"></div>
+    <div id="recommendationsSection"></div>
   </div>
 
   <script>
@@ -33,19 +34,231 @@
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
     }
 
-    if (!token) {
-      // 未登录也可以查看小说详情，但不能查看章节列表
+    function updateMetaTag(selector, content) {
+      const element = document.querySelector(selector);
+      if (element && content) {
+        element.setAttribute('content', content);
+      }
+    }
+
+    function buildReadingHint(novel, progress) {
+      if (progress && progress.chapter_number) {
+        return `你已读到第 ${progress.chapter_number} 章，现在可以继续追更。`;
+      }
+
+      if (!novel.is_premium) {
+        return '当前作品可直接开始阅读，适合先从首章试读判断是否继续追更。';
+      }
+
+      if (novel.free_chapters > 0) {
+        return `这本作品前 ${novel.free_chapters} 章可免费试读，适合先看节奏和设定再决定是否开通会员。`;
+      }
+
+      return '这本作品以会员章节为主，适合先了解简介和目录后再开通阅读。';
+    }
+
+    function buildPrimaryAction(novel, progress) {
+      if (!token) {
+        return `<button class="btn-primary" onclick="location.href='login.html'">登录后开始阅读</button>`;
+      }
+
+      if (progress && progress.chapter_number) {
+        return `<button class="btn-primary" onclick="continueReading(${progress.chapter_number})">继续阅读（第${progress.chapter_number}章）</button>`;
+      }
+
+      return `<button class="btn-primary" onclick="startReading()">开始阅读</button>`;
+    }
+
+    function buildReadingStatus(novel) {
+      if (!novel.is_premium) {
+        return '全本当前按普通章节开放，可直接开始阅读。';
+      }
+
+      if (novel.free_chapters > 0) {
+        return `当前共 ${novel.chapter_count} 章，前 ${novel.free_chapters} 章可免费试读。`;
+      }
+
+      return `当前共 ${novel.chapter_count} 章，主要章节需要会员权限。`;
+    }
+
+    function renderNovelDetail(novel, ratings, progress, userRating) {
+      document.getElementById('novelDetail').innerHTML = `
+        <section class="novel-header novel-hero">
+          <div class="novel-hero-cover">
+            ${novel.cover_url
+              ? `<img class="novel-detail-cover" src="${escapeHtml(novel.cover_url)}" alt="${escapeHtml(novel.title)}" referrerpolicy="no-referrer">`
+              : `<div class="novel-detail-cover novel-detail-cover-fallback">${escapeHtml(novel.title.charAt(0))}</div>`
+            }
+          </div>
+          <div class="novel-hero-body">
+            <p class="novel-kicker">作品详情</p>
+            <h2>${escapeHtml(novel.title)}</h2>
+            <p class="novel-meta">
+              作者：${escapeHtml(novel.author)}
+              ${novel.primary_category ? ` | <a class="novel-category-link" href="index.html?category=${encodeURIComponent(novel.primary_category)}">${escapeHtml(novel.primary_category)}</a>` : ''}
+              | 共${novel.chapter_count}章
+              ${novel.source_category && novel.source_category !== novel.primary_category ? ` | 来源分类：${escapeHtml(novel.source_category)}` : ''}
+            </p>
+
+            <div class="rating-section">
+              <div class="rating-display">
+                <span class="rating-stars">${'★'.repeat(Math.round(ratings.average || 0))}${'☆'.repeat(5 - Math.round(ratings.average || 0))}</span>
+                <span class="rating-score">${(ratings.average || 0).toFixed(1)}</span>
+                <span class="rating-count">(${ratings.count}人评分)</span>
+              </div>
+              ${token ? `<div class="user-rating">
+                <span>我的评分：</span>
+                ${[1,2,3,4,5].map((star) => `
+                  <span class="star ${userRating.rating >= star ? 'active' : ''}" onclick="rateNovel(${star})">★</span>
+                `).join('')}
+              </div>` : ''}
+            </div>
+
+            <div class="novel-reading-hint">
+              <strong>阅读提示</strong>
+              <p>${escapeHtml(buildReadingHint(novel, progress))}</p>
+            </div>
+
+            <div class="novel-hero-actions">
+              ${buildPrimaryAction(novel, progress)}
+              <button class="btn-secondary" onclick="scrollToCatalog()">查看目录</button>
+            </div>
+
+            <div class="novel-status-grid">
+              <div class="novel-status-card">
+                <span class="novel-status-label">阅读状态</span>
+                <strong>${novel.is_premium ? '会员作品' : '普通作品'}</strong>
+                <p>${escapeHtml(buildReadingStatus(novel))}</p>
+              </div>
+              <div class="novel-status-card">
+                <span class="novel-status-label">推荐阅读</span>
+                <strong>${progress ? '从断点继续' : '从首章试读'}</strong>
+                <p>${progress ? `上次已读到第 ${progress.chapter_number} 章，适合直接接着看。` : '先从前几章判断设定、文风和节奏，再决定是否继续追更。'}</p>
+              </div>
+            </div>
+
+            ${novel.description ? `<p class="novel-description">${escapeHtml(novel.description)}</p>` : ''}
+          </div>
+        </section>
+      `;
+
+      document.title = `${novel.title} - 中文小说阅读网`;
+      updateMetaTag('meta[name="description"]', novel.description || `在线阅读《${novel.title}》`);
+      updateMetaTag('meta[property="og:title"]', `${novel.title} - 中文小说阅读网`);
+    }
+
+    function renderChapterList(previewPayload, chapters) {
+      const preview = previewPayload.preview || [];
+      const previewHTML = preview.map((chapter) => `
+        <div class="chapter-item ${chapter.needs_premium ? 'premium' : ''}" onclick="readChapter(${chapter.chapter_number})">
+          <span class="chapter-title">第${chapter.chapter_number}章 ${escapeHtml(chapter.title)}</span>
+          <span class="chapter-info">
+            ${chapter.needs_premium ? '<span class="lock-icon">🔒 会员</span>' : '<span class="free-icon">✓ 免费</span>'}
+            ${chapter.word_count || 0}字
+          </span>
+        </div>
+      `).join('');
+
+      const fullChapterHTML = token
+        ? chapters.map((chapter) => `
+            <div class="chapter-item ${chapter.needs_premium ? 'premium' : ''}" onclick="readChapter(${chapter.chapter_number})">
+              <span class="chapter-title">第${chapter.chapter_number}章 ${escapeHtml(chapter.title)}</span>
+              <span class="chapter-info">
+                ${chapter.needs_premium ? '<span class="lock-icon">🔒 会员</span>' : '<span class="free-icon">✓ 免费</span>'}
+                ${chapter.word_count || 0}字
+              </span>
+            </div>
+          `).join('')
+        : '';
+
+      document.getElementById('chapterList').innerHTML = `
+        <section class="chapter-list-container chapter-preview" id="chapterCatalog">
+          <div class="chapter-list-header">
+            <div>
+              <p class="novel-kicker">目录预览</p>
+              <h3>先看前几章，再决定继续追更</h3>
+            </div>
+            <p class="chapter-list-copy">当前共 ${previewPayload.chapter_count} 章，详情页先展示前 ${preview.length} 章预览。</p>
+          </div>
+          <div class="chapter-list">${previewHTML}</div>
+          <div class="chapter-list-actions">
+            ${token
+              ? `<button class="btn-secondary" onclick="startReading()">从第 1 章开始</button>`
+              : `<a class="btn-secondary btn-link" href="login.html">登录后查看完整目录</a>`
+            }
+          </div>
+          ${token ? `
+            <div class="chapter-list-full">
+              <div class="chapter-list-header">
+                <div>
+                  <p class="novel-kicker">完整目录</p>
+                  <h3>继续挑章节或直接续读</h3>
+                </div>
+              </div>
+              <div class="chapter-list">${fullChapterHTML}</div>
+            </div>
+          ` : ''}
+        </section>
+      `;
+    }
+
+    function renderRecommendations(recommendationPayload) {
+      const recommendations = recommendationPayload.recommendations || [];
+
+      if (recommendations.length === 0) {
+        document.getElementById('recommendationsSection').innerHTML = '';
+        return;
+      }
+
+      const cards = recommendations.map((novel) => `
+        <article class="recommendation-card" onclick="location.href='novel.html?id=${novel.id}'">
+          <div class="recommendation-cover-wrap">
+            ${novel.cover_url
+              ? `<img class="recommendation-cover" src="${escapeHtml(novel.cover_url)}" alt="${escapeHtml(novel.title)}" referrerpolicy="no-referrer">`
+              : `<div class="recommendation-cover recommendation-cover-fallback">${escapeHtml(novel.title.charAt(0))}</div>`
+            }
+          </div>
+          <div class="recommendation-body">
+            <h4>${escapeHtml(novel.title)}</h4>
+            <p class="recommendation-meta">${escapeHtml(novel.author)}${novel.primary_category ? ` · ${escapeHtml(novel.primary_category)}` : ''}</p>
+            <p class="recommendation-copy">${escapeHtml((novel.description || '同类热门作品，适合接着看。').slice(0, 58))}</p>
+            <p class="recommendation-foot">${novel.chapter_count || 0} 章${novel.is_premium ? ' · 会员作品' : ' · 可直接阅读'}</p>
+          </div>
+        </article>
+      `).join('');
+
+      document.getElementById('recommendationsSection').innerHTML = `
+        <section class="chapter-list-container novel-recommendations">
+          <div class="chapter-list-header">
+            <div>
+              <p class="novel-kicker">同类推荐</p>
+              <h3>这类作品里，还可以继续看这些</h3>
+            </div>
+            <p class="chapter-list-copy">按同分类热门程度推荐，适合看完简介后继续找下一本。</p>
+          </div>
+          <div class="recommendation-grid">${cards}</div>
+        </section>
+      `;
+    }
+
+    async function loadRecommendations() {
+      const response = await fetch(`${API_URL}/novels/${novelId}/recommendations`);
+      if (!response.ok) {
+        return { recommendations: [] };
+      }
+
+      return response.json();
     }
 
     async function loadNovelDetail() {
       try {
-        // 小说详情和评分是公开的
         const requests = [
           fetch(`${API_URL}/novels/${novelId}`),
-          fetch(`${API_URL}/ratings/${novelId}`)
+          fetch(`${API_URL}/ratings/${novelId}`),
+          fetch(`${API_URL}/novels/${novelId}/chapter-preview`),
+          loadRecommendations()
         ];
 
-        // 需要登录的请求
         if (token) {
           requests.push(
             fetch(`${API_URL}/novels/${novelId}/chapters`, {
@@ -61,7 +274,7 @@
         }
 
         const responses = await Promise.all(requests);
-        const [novelRes, ratingsRes] = responses;
+        const [novelRes, ratingsRes, previewRes, recommendationPayload] = responses;
 
         if (!novelRes.ok) {
           throw new Error('加载小说失败');
@@ -69,89 +282,21 @@
 
         const novel = await novelRes.json();
         const ratings = await ratingsRes.json();
+        const previewPayload = previewRes.ok ? await previewRes.json() : { preview: [], chapter_count: novel.chapter_count || 0 };
 
         let chapters = [];
         let progress = null;
         let userRating = { rating: 0 };
 
-        if (token && responses.length > 2) {
-          chapters = responses[2].ok ? await responses[2].json() : [];
-          progress = responses[3].ok ? await responses[3].json() : null;
-          userRating = responses[4].ok ? await responses[4].json() : { rating: 0 };
+        if (token && responses.length > 4) {
+          chapters = responses[4].ok ? await responses[4].json() : [];
+          progress = responses[5].ok ? await responses[5].json() : null;
+          userRating = responses[6].ok ? await responses[6].json() : { rating: 0 };
         }
 
-        // 更新页面标题和 SEO
-        document.title = `${novel.title} - 中文小说阅读网`;
-        document.querySelector('meta[name="description"]').content = novel.description || `在线阅读《${novel.title}》`;
-        document.querySelector('meta[property="og:type"]').insertAdjacentHTML('afterend',
-          `<meta property="og:title" content="${escapeHtml(novel.title)} - 中文小说阅读网">`);
-
-
-        // 显示小说详情
-        document.getElementById('novelDetail').innerHTML = `
-          <div class="novel-header">
-            <div class="novel-detail-cover-wrap">
-              ${novel.cover_url
-                ? `<img class="novel-detail-cover" src="${escapeHtml(novel.cover_url)}" alt="${escapeHtml(novel.title)}" referrerpolicy="no-referrer">`
-                : `<div class="novel-detail-cover novel-detail-cover-fallback">${escapeHtml(novel.title.charAt(0))}</div>`
-              }
-            </div>
-            <h2>${escapeHtml(novel.title)}</h2>
-            <p class="novel-meta">作者：${escapeHtml(novel.author)} | 共${novel.chapter_count}章${novel.primary_category ? ` | 主分类：${escapeHtml(novel.primary_category)}` : ''}${novel.source_category && novel.source_category !== novel.primary_category ? ` | 来源分类：${escapeHtml(novel.source_category)}` : ''}</p>
-
-            <!-- 评分显示 -->
-            <div class="rating-section">
-              <div class="rating-display">
-                <span class="rating-stars">${'★'.repeat(Math.round(ratings.average || 0))}${'☆'.repeat(5 - Math.round(ratings.average || 0))}</span>
-                <span class="rating-score">${(ratings.average || 0).toFixed(1)}</span>
-                <span class="rating-count">(${ratings.count}人评分)</span>
-              </div>
-              ${token ? `<div class="user-rating">
-                <span>我的评分：</span>
-                ${[1,2,3,4,5].map(star => `
-                  <span class="star ${userRating.rating >= star ? 'active' : ''}" onclick="rateNovel(${star})">★</span>
-                `).join('')}
-              </div>` : ''}
-            </div>
-
-            ${novel.description ? `<p class="novel-description">${escapeHtml(novel.description)}</p>` : ''}
-            ${!token ?
-              `<button class="btn-primary" onclick="location.href='login.html'">登录后开始阅读</button>` :
-              progress ?
-                `<button class="btn-primary" onclick="continueReading(${progress.chapter_number})">继续阅读（第${progress.chapter_number}章）</button>` :
-                `<button class="btn-primary" onclick="startReading()">开始阅读</button>`
-            }
-          </div>
-        `;
-
-        // 显示章节列表
-        if (!token) {
-          document.getElementById('chapterList').innerHTML = `
-            <div class="chapter-list-container">
-              <h3>章节目录</h3>
-              <p style="color:#7f8c8d; text-align:center; padding:20px;">
-                <a href="login.html" style="color:#3498db;">登录</a> 后查看章节目录
-              </p>
-            </div>
-          `;
-        } else {
-          const chapterListHTML = chapters.map(chapter => `
-            <div class="chapter-item ${chapter.needs_premium ? 'premium' : ''}" onclick="readChapter(${chapter.chapter_number})">
-              <span class="chapter-title">第${chapter.chapter_number}章 ${escapeHtml(chapter.title)}</span>
-              <span class="chapter-info">
-                ${chapter.needs_premium ? '<span class="lock-icon">🔒</span>' : '<span class="free-icon">✓</span>'}
-                ${chapter.word_count}字
-              </span>
-            </div>
-          `).join('');
-
-          document.getElementById('chapterList').innerHTML = `
-            <div class="chapter-list-container">
-              <h3>章节目录</h3>
-              <div class="chapter-list">${chapterListHTML}</div>
-            </div>
-          `;
-        }
+        renderNovelDetail(novel, ratings, progress, userRating);
+        renderChapterList(previewPayload, chapters);
+        renderRecommendations(recommendationPayload);
       } catch (error) {
         document.getElementById('novelDetail').innerHTML = `<p class="error">加载失败：${escapeHtml(error.message)}</p>`;
       }
@@ -167,6 +312,13 @@
 
     function readChapter(chapterNumber) {
       location.href = `reader.html?novelId=${novelId}&chapter=${chapterNumber}`;
+    }
+
+    function scrollToCatalog() {
+      const catalog = document.getElementById('chapterCatalog');
+      if (catalog) {
+        catalog.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
 
     async function rateNovel(rating) {

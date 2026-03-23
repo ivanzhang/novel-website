@@ -22,22 +22,28 @@
     </div>
   </header>
 
-  <div class="container">
-    <!-- 搜索框 -->
-    <div class="search-container">
-      <input type="text" id="searchInput" placeholder="搜索小说标题或作者..." onkeyup="handleSearch(event)">
-      <select id="sortSelect" onchange="changeSort(this.value)" aria-label="小说排序">
-        <option value="popular">热门</option>
-        <option value="newest">最新</option>
-      </select>
-      <button onclick="performSearch()">🔍 搜索</button>
+  <div class="container home-container">
+    <div class="search-shell" id="searchShell">
+      <button class="mobile-search-toggle" id="mobileSearchToggle" type="button" aria-expanded="false">搜索与排序</button>
+      <div class="search-container" id="searchContainer">
+        <input type="text" id="searchInput" placeholder="搜索小说标题或作者..." onkeyup="handleSearch(event)">
+        <select id="sortSelect" onchange="changeSort(this.value)" aria-label="小说排序">
+          <option value="popular">热门</option>
+          <option value="newest">最新</option>
+        </select>
+        <button onclick="performSearch()">🔍 搜索</button>
+      </div>
     </div>
 
     <div id="searchResults"></div>
-    <div id="continueReading"></div>
+    <div class="continue-reading-shell" id="continueReadingShell">
+      <button class="continue-reading-toggle" id="continueReadingToggle" type="button" aria-expanded="false" style="display:none;">继续阅读</button>
+      <div id="continueReading"></div>
+    </div>
     <div class="catalog-layout">
       <aside class="category-sidebar" id="categorySidebar"></aside>
       <section class="catalog-main">
+        <section class="category-intro" id="categoryIntro"></section>
         <div class="catalog-header">
           <div class="catalog-title-block">
             <h2 id="novelListTitle">热门小说</h2>
@@ -60,14 +66,71 @@
     let currentQuery = urlParams.get('q') || '';
     let currentSort = urlParams.get('sort') === 'newest' ? 'newest' : 'popular';
     const currentLimit = 20;
+    const categoryPageData = window.__CATEGORY_PAGE_DATA__ || null;
 
     function escapeHtml(str) {
       if (!str) return '';
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
     }
 
+    function isMobileLayout() {
+      return window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    function syncHomeResponsiveState() {
+      const searchShell = document.getElementById('searchShell');
+      const continueReadingShell = document.getElementById('continueReadingShell');
+      const continueReadingToggle = document.getElementById('continueReadingToggle');
+
+      if (isMobileLayout()) {
+        if (currentQuery) {
+          setMobileExpandedState('searchShell', 'mobileSearchToggle', true);
+        }
+        if (continueReadingToggle.style.display !== 'none') {
+          continueReadingToggle.style.display = 'inline-flex';
+        }
+        return;
+      }
+
+      searchShell.classList.remove('expanded');
+      continueReadingShell.classList.add('expanded');
+      continueReadingToggle.style.display = 'none';
+    }
+
+    function scrollCatalogIntoView() {
+      const catalog = document.querySelector('.catalog-main');
+      if (catalog && isMobileLayout()) {
+        catalog.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function setMobileExpandedState(shellId, toggleId, expanded) {
+      const shell = document.getElementById(shellId);
+      const toggle = document.getElementById(toggleId);
+      if (!shell || !toggle) return;
+      shell.classList.toggle('expanded', expanded);
+      toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+
     document.getElementById('searchInput').value = currentQuery;
     document.getElementById('sortSelect').value = currentSort;
+
+    function renderCategoryIntro(data) {
+      const intro = document.getElementById('categoryIntro');
+      if (!data || !data.category) {
+        intro.innerHTML = '';
+        intro.style.display = 'none';
+        return;
+      }
+
+      intro.style.display = 'block';
+      intro.innerHTML = `
+        <p class="category-intro-kicker">分类导读</p>
+        <h2 class="category-intro-title">${escapeHtml(data.heading || `${data.category}频道热门作品`)}</h2>
+        <p class="category-intro-copy">${escapeHtml(data.intro || `${data.category}频道聚合了站内该分类下的热门作品。`)}</p>
+        <p class="category-intro-meta">当前分类共 ${escapeHtml(data.total || 0)} 本，适合从热门和高完成度作品开始阅读。</p>
+      `;
+    }
 
     if (token) {
       document.getElementById('loginLink').style.display = 'none';
@@ -162,6 +225,7 @@
           novelListDiv.style.display = 'none';
           titleDiv.style.display = 'none';
           document.getElementById('pagination').style.display = 'none';
+          scrollCatalogIntoView();
           return;
         }
 
@@ -174,6 +238,7 @@
         novelListDiv.style.display = 'none';
         titleDiv.style.display = 'none';
         document.getElementById('pagination').style.display = 'none';
+        scrollCatalogIntoView();
       } catch (error) {
         console.error('搜索失败', error);
       }
@@ -215,6 +280,8 @@
                 <div class="continue-reading-list">${continueReadingHTML}</div>
               </div>
             `;
+            document.getElementById('continueReadingToggle').style.display = isMobileLayout() ? 'inline-flex' : 'none';
+            syncHomeResponsiveState();
           }
         }
       } catch (error) {
@@ -302,8 +369,18 @@
         ? `当前分类：${currentCategory} · 排序：${currentSort === 'popular' ? '热门' : '最新'}`
         : `浏览全部分类下的小说 · 排序：${currentSort === 'popular' ? '热门' : '最新'}`;
       document.getElementById('catalogMeta').textContent = `${currentSort === 'popular' ? '热门榜' : '最新上架'} · 当前 ${data.total} 本`;
+      if (currentCategory) {
+        renderCategoryIntro({
+          ...(categoryPageData && categoryPageData.category === currentCategory ? categoryPageData : {}),
+          category: currentCategory,
+          total: data.total
+        });
+      } else {
+        renderCategoryIntro(null);
+      }
       renderPagination(data.total, data.page, data.limit);
       updateCatalogUrl();
+      scrollCatalogIntoView();
     }
 
     function changeSort(sort) {
@@ -321,6 +398,10 @@
       currentCategory = category;
       currentPage = 1;
       loadCategories();
+      if (isMobileLayout()) {
+        setMobileExpandedState('searchShell', 'mobileSearchToggle', false);
+        setMobileExpandedState('continueReadingShell', 'continueReadingToggle', false);
+      }
       if (currentQuery) {
         performSearch();
       } else {
@@ -331,14 +412,29 @@
     function changePage(page) {
       currentPage = page;
       loadNovels();
+      scrollCatalogIntoView();
     }
 
     function viewNovel(id) {
       location.href = `novel.html?id=${id}`;
     }
 
+    document.getElementById('mobileSearchToggle').addEventListener('click', () => {
+      const shell = document.getElementById('searchShell');
+      setMobileExpandedState('searchShell', 'mobileSearchToggle', !shell.classList.contains('expanded'));
+    });
+
+    document.getElementById('continueReadingToggle').addEventListener('click', () => {
+      const shell = document.getElementById('continueReadingShell');
+      setMobileExpandedState('continueReadingShell', 'continueReadingToggle', !shell.classList.contains('expanded'));
+    });
+
+    window.addEventListener('resize', syncHomeResponsiveState);
+
     loadContinueReading();
+    renderCategoryIntro(categoryPageData);
     loadCategories();
+    syncHomeResponsiveState();
     if (currentQuery) {
       performSearch();
     } else {

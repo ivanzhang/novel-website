@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="中文小说阅读网会员中心 — 畅读所有VIP小说">
+  <meta name="description" content="会员中心 - 查看账户信息、会员有效期、阅读记录与会员权益">
   <title>会员中心 - 中文小说阅读网</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -12,76 +12,470 @@
     <h1>📚 中文小说阅读网</h1>
     <div class="nav">
       <a href="index.html">返回首页</a>
+      <a href="history.html">阅读历史</a>
+      <a href="#" id="logoutLink">退出</a>
     </div>
   </header>
 
   <div class="container">
-    <h2>会员套餐</h2>
-    <div class="membership-plans">
-      <div class="plan-card">
-        <h3>月度会员</h3>
-        <div class="price">¥30</div>
-        <p>畅读所有VIP小说</p>
-        <button class="btn" onclick="purchase(1)">立即购买</button>
-      </div>
-      <div class="plan-card">
-        <h3>季度会员</h3>
-        <div class="price">¥80</div>
-        <p>3个月会员权益</p>
-        <button class="btn" onclick="purchase(3)">立即购买</button>
-      </div>
-      <div class="plan-card">
-        <h3>年度会员</h3>
-        <div class="price">¥288</div>
-        <p>12个月会员权益</p>
-        <button class="btn" onclick="purchase(12)">立即购买</button>
-      </div>
+    <div class="member-shell">
+      <aside class="member-sidebar" id="memberSidebar">
+        <div class="member-sidebar-card">
+          <p class="member-sidebar-kicker">会员中心</p>
+          <h2>账户与权益</h2>
+          <p class="member-sidebar-copy" id="memberSidebarCopy">查看会员状态、最近阅读和续费入口。</p>
+          <button class="member-sidebar-toggle" id="memberSidebarToggle" type="button" aria-expanded="false">展开账户摘要</button>
+          <div class="member-sidebar-summary" id="memberSidebarSummary">
+            <div class="member-sidebar-stat">
+              <span class="member-sidebar-stat-label">当前状态</span>
+              <strong>正在加载</strong>
+            </div>
+            <div class="member-sidebar-stat">
+              <span class="member-sidebar-stat-label">会员到期</span>
+              <strong>读取中</strong>
+            </div>
+          </div>
+          <div class="member-account-facts" id="memberAccountFacts"></div>
+        </div>
+        <nav class="member-nav" aria-label="会员中心导航">
+          <button class="member-nav-link active" data-section="overview">会员总览</button>
+          <button class="member-nav-link" data-section="history">阅读记录</button>
+          <button class="member-nav-link" data-section="benefits">会员权益</button>
+          <button class="member-nav-link" data-section="plans">续费开通</button>
+        </nav>
+        <div class="member-mobile-status" id="memberMobileStatus">
+          <span>正在加载账户状态</span>
+        </div>
+      </aside>
+
+      <main class="member-main">
+        <section class="member-hero" id="memberHero">
+          <p class="member-hero-eyebrow">正在加载</p>
+          <h2>读取会员信息中</h2>
+          <p class="member-hero-copy">正在准备你的账户、阅读记录和会员状态。</p>
+          <div class="member-hero-actions">
+            <a class="member-hero-primary" href="index.html">返回首页</a>
+          </div>
+        </section>
+
+        <section class="member-section active" id="member-overview">
+          <div class="member-section-header">
+            <div>
+              <p class="member-section-kicker">总览</p>
+              <h3>账户与会员状态</h3>
+            </div>
+          </div>
+          <div class="member-summary-grid" id="memberSummary"></div>
+          <div class="member-panel-grid">
+            <article class="member-panel">
+              <div class="member-panel-header">
+                <h4>最近阅读</h4>
+                <button class="member-panel-link" data-switch="history">查看全部</button>
+              </div>
+              <div id="memberRecentReads"></div>
+            </article>
+            <article class="member-panel">
+              <div class="member-panel-header">
+                <h4>会员权益</h4>
+                <button class="member-panel-link" data-switch="benefits">查看权益</button>
+              </div>
+              <div class="benefit-list compact" id="memberBenefitsPreview"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="member-section" id="member-history">
+          <div class="member-section-header">
+            <div>
+              <p class="member-section-kicker">阅读记录</p>
+              <h3>继续阅读</h3>
+            </div>
+          </div>
+          <div class="member-history-list" id="memberHistoryList"></div>
+        </section>
+
+        <section class="member-section" id="member-benefits">
+          <div class="member-section-header">
+            <div>
+              <p class="member-section-kicker">会员权益</p>
+              <h3>开通后可获得</h3>
+            </div>
+          </div>
+          <div class="benefit-list" id="memberBenefits"></div>
+        </section>
+
+        <section class="member-section" id="member-plans">
+          <div class="member-section-header">
+            <div>
+              <p class="member-section-kicker">续费开通</p>
+              <h3>选择合适的会员套餐</h3>
+            </div>
+          </div>
+          <div class="member-message" id="memberMessage"></div>
+          <div class="membership-plans enhanced" id="memberPlans"></div>
+        </section>
+      </main>
     </div>
-    <div id="message" style="margin-top:30px;"></div>
   </div>
 
   <script>
     const API_URL = '/api';
     const token = localStorage.getItem('token');
+    const logoutLink = document.getElementById('logoutLink');
+    const sectionMap = {
+      overview: 'member-overview',
+      history: 'member-history',
+      benefits: 'member-benefits',
+      plans: 'member-plans'
+    };
 
     function escapeHtml(str) {
       if (!str) return '';
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
     }
 
-    if (!token) {
-      alert('请先登录');
-      location.href = 'login.html';
+    function formatDate(value) {
+      if (!value) return '未开通';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '未开通';
+      return date.toLocaleDateString('zh-CN');
+    }
+
+    function formatDuration(seconds) {
+      const total = Number(seconds || 0);
+      if (!total) return '0 小时';
+      const hours = Math.floor(total / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      if (hours <= 0) return `${minutes} 分钟`;
+      if (minutes <= 0) return `${hours} 小时`;
+      return `${hours} 小时 ${minutes} 分钟`;
+    }
+
+    function switchSection(section) {
+      document.querySelectorAll('.member-nav-link').forEach((button) => {
+        button.classList.toggle('active', button.dataset.section === section);
+      });
+      document.querySelectorAll('.member-section').forEach((panel) => {
+        panel.classList.toggle('active', panel.id === sectionMap[section]);
+      });
+      setMobileSectionState(section);
+      scrollSectionIntoView(section);
+    }
+
+    function scrollSectionIntoView(section) {
+      const panel = document.getElementById(sectionMap[section]);
+      if (!panel) return;
+
+      if (window.matchMedia('(max-width: 720px)').matches) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function setMobileSectionState(section) {
+      document.body.setAttribute('data-member-section', section);
+      const sidebar = document.getElementById('memberSidebar');
+      if (window.matchMedia('(max-width: 720px)').matches && section !== 'overview') {
+        sidebar.classList.remove('expanded');
+        const toggle = document.getElementById('memberSidebarToggle');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.textContent = '展开账户摘要';
+      }
+    }
+
+    function toggleSidebarCard() {
+      const sidebar = document.getElementById('memberSidebar');
+      const toggle = document.getElementById('memberSidebarToggle');
+      const expanded = sidebar.classList.toggle('expanded');
+      toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      toggle.textContent = expanded ? '收起账户摘要' : '展开账户摘要';
+    }
+
+    function renderHero(profile) {
+      const active = profile.is_member && profile.days_remaining > 0;
+      const hero = document.getElementById('memberHero');
+      hero.innerHTML = `
+        <p class="member-hero-eyebrow">${active ? '会员有效中' : '尚未开通会员'}</p>
+        <h2>${active ? `${escapeHtml(profile.member_level)} · 剩余 ${profile.days_remaining} 天` : '开通会员，解锁更完整的阅读体验'}</h2>
+        <p class="member-hero-copy">
+          ${active
+            ? `当前会员有效期至 ${formatDate(profile.member_expire)}，现在续费会在到期时间基础上顺延。`
+            : '开通后可阅读站内 VIP 章节，保留阅读进度，并更顺畅地追更。'}
+        </p>
+        <div class="member-hero-actions">
+          <button class="member-hero-primary" type="button" onclick="switchSection('plans')">${active ? '立即续费' : '立即开通'}</button>
+          <a class="member-hero-secondary" href="index.html">返回首页找书</a>
+        </div>
+      `;
+    }
+
+    function renderSidebar(payload) {
+      const { profile, stats, recent_reads: recentReads = [] } = payload;
+      const active = profile.is_member && profile.days_remaining > 0;
+
+      document.getElementById('memberSidebarCopy').textContent = active
+        ? `当前会员有效期至 ${formatDate(profile.member_expire)}，继续阅读和续费都可以在这里完成。`
+        : '当前还是普通用户，开通后可解锁 VIP 章节并同步阅读进度。';
+
+      document.getElementById('memberSidebarSummary').innerHTML = `
+        <div class="member-sidebar-stat">
+          <span class="member-sidebar-stat-label">当前状态</span>
+          <strong>${active ? '会员有效中' : '普通用户'}</strong>
+        </div>
+        <div class="member-sidebar-stat">
+          <span class="member-sidebar-stat-label">会员到期</span>
+          <strong>${formatDate(profile.member_expire)}</strong>
+        </div>
+      `;
+
+      document.getElementById('memberAccountFacts').innerHTML = `
+        <div class="member-account-fact">
+          <span>账户</span>
+          <strong>${escapeHtml(profile.username)}</strong>
+        </div>
+        <div class="member-account-fact">
+          <span>等级</span>
+          <strong>${escapeHtml(profile.member_level)}</strong>
+        </div>
+        <div class="member-account-fact">
+          <span>权益数</span>
+          <strong>${profile.benefit_count || 0} 项</strong>
+        </div>
+        <div class="member-account-fact">
+          <span>最近阅读</span>
+          <strong>${recentReads.length ? `${recentReads[0].novel_title}` : '暂无记录'}</strong>
+        </div>
+        <div class="member-account-fact">
+          <span>已读小说</span>
+          <strong>${stats.novels_read || 0} 本</strong>
+        </div>
+        <div class="member-account-fact">
+          <span>累计时长</span>
+          <strong>${formatDuration(stats.total_time)}</strong>
+        </div>
+      `;
+
+      document.getElementById('memberMobileStatus').innerHTML = `
+        <div class="member-mobile-status-copy">
+          <strong>${active ? `${escapeHtml(profile.member_level)} · 剩余 ${profile.days_remaining} 天` : '普通用户 · 尚未开通会员'}</strong>
+          <span>${recentReads.length ? `最近在读：${escapeHtml(recentReads[0].novel_title)}` : `已读 ${stats.novels_read || 0} 本小说`}</span>
+        </div>
+        <button class="member-mobile-status-action" type="button" onclick="toggleSidebarCard()">账户摘要</button>
+      `;
+    }
+
+    function renderSummary(payload) {
+      const { profile, stats } = payload;
+      document.getElementById('memberSummary').innerHTML = `
+        <article class="member-summary-card accent">
+          <p class="member-summary-label">账户信息</p>
+          <h4>${escapeHtml(profile.username)}</h4>
+          <p class="member-summary-value">${escapeHtml(profile.member_level)}</p>
+        </article>
+        <article class="member-summary-card">
+          <p class="member-summary-label">会员状态</p>
+          <h4>${profile.is_member && profile.days_remaining > 0 ? '有效中' : '未开通'}</h4>
+          <p class="member-summary-value">${profile.is_member && profile.days_remaining > 0 ? `剩余 ${profile.days_remaining} 天` : '开通后解锁 VIP 章节'}</p>
+        </article>
+        <article class="member-summary-card">
+          <p class="member-summary-label">到期时间</p>
+          <h4>${formatDate(profile.member_expire)}</h4>
+          <p class="member-summary-value">${profile.days_remaining > 0 ? '续费会自动顺延' : '立即开通即可开始计时'}</p>
+        </article>
+        <article class="member-summary-card">
+          <p class="member-summary-label">阅读统计</p>
+          <h4>${stats.novels_read} 本</h4>
+          <p class="member-summary-value">累计阅读 ${formatDuration(stats.total_time)}</p>
+        </article>
+      `;
+    }
+
+    function renderRecentReads(reads, targetId, compact) {
+      const container = document.getElementById(targetId);
+      if (!reads.length) {
+        container.innerHTML = '<p class="member-empty">还没有阅读记录，去首页挑一本到手就能开始积累。</p>';
+        return;
+      }
+
+      container.innerHTML = reads.map((item) => `
+        <article class="member-history-item ${compact ? 'compact' : ''}">
+          <div class="member-history-copy">
+            <h4>${escapeHtml(item.novel_title)}</h4>
+            <p>作者：${escapeHtml(item.author || '未知')}</p>
+            <p>读到第 ${item.chapter_number} 章 · ${escapeHtml(item.chapter_title)}</p>
+            <p>最近阅读：${formatDate(item.last_read_at)}</p>
+          </div>
+          <button class="member-history-action" type="button" onclick="continueReading(${item.novel_id}, ${item.chapter_number})">继续阅读</button>
+        </article>
+      `).join('');
+    }
+
+    function renderBenefits(benefits, targetId, limit) {
+      const list = limit ? benefits.slice(0, limit) : benefits;
+      if (!list.length) {
+        document.getElementById(targetId).innerHTML = '<p class="member-empty">会员权益将在这里集中展示，当前版本正在补齐更多说明。</p>';
+        return;
+      }
+      document.getElementById(targetId).innerHTML = list.map((benefit) => `
+        <article class="benefit-card">
+          <p class="benefit-badge">权益</p>
+          <h4>${escapeHtml(benefit.title)}</h4>
+          <p>${escapeHtml(benefit.description)}</p>
+        </article>
+      `).join('');
+    }
+
+    function renderPlans(plans, profile) {
+      const active = profile.is_member && profile.days_remaining > 0;
+      document.getElementById('memberPlans').innerHTML = plans.map((plan) => `
+        <article class="plan-card ${plan.recommended ? 'recommended' : ''}">
+          <p class="plan-badge">${plan.recommended ? '推荐' : '套餐'}</p>
+          <h3>${escapeHtml(plan.title)}</h3>
+          <div class="price">¥${plan.price}</div>
+          <p>${escapeHtml(plan.tagline)}</p>
+          <button class="btn" type="button" onclick="purchase(${plan.months})">${active ? '续费这个套餐' : '立即开通'}</button>
+        </article>
+      `).join('');
+    }
+
+    async function retryLoadMemberCenter() {
+      await loadMemberCenter();
+    }
+
+    async function loadMemberCenter() {
+      try {
+        const response = await fetch(`${API_URL}/member-center`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          location.href = 'login.html';
+          return;
+        }
+
+        if (!response.ok) {
+          let message = '会员中心加载失败';
+          try {
+            const data = await response.json();
+            if (data && data.error) {
+              message = data.error;
+            }
+          } catch (error) {
+            // ignore parse errors and keep generic message
+          }
+          throw new Error(message);
+        }
+
+        const payload = await response.json();
+        renderSidebar(payload);
+        renderHero(payload.profile);
+        renderSummary(payload);
+        renderRecentReads(payload.recent_reads.slice(0, 3), 'memberRecentReads', true);
+        renderRecentReads(payload.recent_reads, 'memberHistoryList', false);
+        renderBenefits(payload.benefits, 'memberBenefitsPreview', 2);
+        renderBenefits(payload.benefits, 'memberBenefits');
+        renderPlans(payload.plans, payload.profile);
+      } catch (error) {
+        document.getElementById('memberHero').innerHTML = `
+          <p class="member-hero-eyebrow">加载失败</p>
+          <h2>会员中心暂时不可用</h2>
+          <p class="member-hero-copy">${escapeHtml(error.message || '请稍后再试')}</p>
+          <div class="member-hero-actions">
+            <button class="member-hero-primary" type="button" onclick="retryLoadMemberCenter()">重新加载</button>
+            <a class="member-hero-secondary" href="index.html">返回首页</a>
+          </div>
+        `;
+        document.getElementById('memberSidebarCopy').textContent = '暂时无法读取账户信息，你可以稍后重试，或先返回首页继续阅读。';
+        document.getElementById('memberSidebarSummary').innerHTML = `
+          <div class="member-sidebar-stat">
+            <span class="member-sidebar-stat-label">当前状态</span>
+            <strong>加载失败</strong>
+          </div>
+        `;
+        document.getElementById('memberMobileStatus').innerHTML = `
+          <div class="member-mobile-status-copy">
+            <strong>会员中心暂时不可用</strong>
+            <span>请稍后重试或返回首页继续阅读</span>
+          </div>
+          <button class="member-mobile-status-action" type="button" onclick="retryLoadMemberCenter()">重新加载</button>
+        `;
+        document.getElementById('memberAccountFacts').innerHTML = `
+          <div class="member-account-fact">
+            <span>处理建议</span>
+            <strong>点击重新加载</strong>
+          </div>
+        `;
+      }
     }
 
     async function purchase(months) {
+      const message = document.getElementById('memberMessage');
+      message.innerHTML = '';
+
       try {
         const response = await fetch(`${API_URL}/purchase-membership`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            Authorization: `Bearer ${token}`
           },
           body: JSON.stringify({ months })
         });
 
         const data = await response.json();
 
-        if (response.ok) {
-          document.getElementById('message').innerHTML = `
-            <div class="success" style="background:white; padding:20px; border-radius:8px;">
-              <h3>✅ 购买成功！</h3>
-              <p>会员有效期至：${new Date(data.expireDate).toLocaleDateString()}</p>
-              <p><a href="index.html">返回首页开始阅读</a></p>
-            </div>
-          `;
-        } else {
-          document.getElementById('message').innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
+        if (!response.ok) {
+          throw new Error(data.error || '购买失败');
         }
+
+        message.innerHTML = `
+          <div class="member-message-card success">
+            <strong>购买成功</strong>
+            <span>会员有效期已更新至 ${formatDate(data.expireDate)}</span>
+          </div>
+        `;
+        await loadMemberCenter();
+        switchSection('overview');
       } catch (error) {
-        document.getElementById('message').innerHTML = '<p class="error">购买失败，请稍后重试</p>';
+        message.innerHTML = `
+          <div class="member-message-card error">
+            <strong>购买失败</strong>
+            <span>${escapeHtml(error.message || '请稍后重试')}</span>
+          </div>
+        `;
       }
     }
+
+    function continueReading(novelId, chapterNumber) {
+      location.href = `reader.html?novelId=${novelId}&chapter=${chapterNumber}`;
+    }
+
+    if (!token) {
+      location.href = 'login.html';
+    } else {
+      setMobileSectionState('overview');
+      loadMemberCenter();
+    }
+
+    document.querySelectorAll('.member-nav-link').forEach((button) => {
+      button.addEventListener('click', () => switchSection(button.dataset.section));
+    });
+
+    document.querySelectorAll('[data-switch]').forEach((button) => {
+      button.addEventListener('click', () => switchSection(button.dataset.switch));
+    });
+
+    logoutLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      localStorage.removeItem('token');
+      location.href = 'index.html';
+    });
+
+    document.getElementById('memberSidebarToggle').addEventListener('click', toggleSidebarCard);
   </script>
 </body>
 </html>
