@@ -1389,6 +1389,65 @@ header h1 {
   margin-bottom: 18px;
 }
 
+.novel-membership-card {
+  margin-bottom: 18px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(173, 118, 66, 0.14);
+  background:
+    radial-gradient(circle at top right, rgba(212, 173, 122, 0.2), transparent 34%),
+    linear-gradient(135deg, #fff8eb, #fffdf8 55%, #f7efe2);
+  box-shadow: 0 12px 28px rgba(73, 49, 27, 0.08);
+}
+
+.novel-membership-kicker {
+  color: #8c6a46;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.novel-membership-card h3 {
+  color: #2f2014;
+  margin-bottom: 10px;
+}
+
+.novel-membership-copy {
+  color: #73553b;
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+
+.novel-membership-benefits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.novel-membership-benefit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(201, 155, 103, 0.12);
+  color: #7b5837;
+  font-size: 14px;
+}
+
+.novel-membership-benefit::before {
+  content: '•';
+  color: #a46831;
+}
+
+.novel-membership-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .novel-status-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1904,6 +1963,28 @@ body.night-mode .chapter-text {
 body.night-mode .reader-nav {
   background: #2d2d2d;
   border-top: 1px solid #444;
+}
+
+body.night-mode .novel-membership-card {
+  background:
+    radial-gradient(circle at top right, rgba(140, 96, 54, 0.24), transparent 34%),
+    linear-gradient(135deg, #342a21, #2b241d 55%, #241e18);
+  border-color: rgba(212, 173, 122, 0.12);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+}
+
+body.night-mode .novel-membership-kicker,
+body.night-mode .novel-membership-copy {
+  color: #d8c3aa;
+}
+
+body.night-mode .novel-membership-card h3 {
+  color: #fff4e6;
+}
+
+body.night-mode .novel-membership-benefit {
+  background: rgba(212, 173, 122, 0.14);
+  color: #f0ddc7;
 }
 
 body.night-mode .reader-secondary-nav {
@@ -2557,6 +2638,11 @@ body.night-mode .comment-input-area textarea {
 
   .novel-hero-actions,
   .chapter-list-actions {
+    flex-direction: column;
+  }
+
+  .novel-membership-benefits,
+  .novel-membership-actions {
     flex-direction: column;
   }
 

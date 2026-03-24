@@ -105,6 +105,94 @@
       return `当前共 ${novel.chapter_count} 章，主要章节需要会员权限。`;
     }
 
+    async function loadMemberCenter() {
+      if (!token) return null;
+
+      const response = await fetch(`${API_URL}/member-center`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      return response.json();
+    }
+
+    function buildMembershipConversionState(novel, memberCenter, progress) {
+      if (!token) {
+        return {
+          title: '登录后可保存进度并继续追更',
+          description: novel.is_premium
+            ? `这本作品前 ${novel.free_chapters || 0} 章可试读，登录后可继续阅读并保存进度。`
+            : '登录后可保存阅读进度、评分和书签，回来能直接继续阅读。',
+          benefits: [
+            '登录后自动保存阅读进度',
+            novel.free_chapters > 0 ? `前 ${novel.free_chapters} 章支持试读` : '可先查看目录再决定是否追更',
+            '后续可快速进入会员中心开通'
+          ],
+          primaryAction: `<button class="btn-primary" onclick="location.href='login.html'">登录后阅读</button>`,
+          secondaryAction: `<button class="btn-secondary" onclick="scrollToCatalog()">先看目录</button>`
+        };
+      }
+
+      const profile = memberCenter?.profile;
+      const activeMember = Boolean(profile?.days_remaining > 0 && profile?.is_member);
+
+      if (activeMember) {
+        return {
+          title: profile.days_remaining > 0 ? `会员有效中，剩余 ${profile.days_remaining} 天` : '会员有效中，可直接畅读',
+          description: progress && progress.chapter_number
+            ? `你已经读到第 ${progress.chapter_number} 章，可以直接继续追更全部章节。`
+            : '当前会员状态有效，可直接开始阅读全部章节和后续更新内容。',
+          benefits: [
+            '可直接解锁后续 VIP 章节',
+            '阅读进度、评分和书签自动同步',
+            '可随时进入会员中心查看权益和有效期'
+          ],
+          primaryAction: progress && progress.chapter_number
+            ? `<button class="btn-primary" onclick="continueReading(${progress.chapter_number})">继续阅读</button>`
+            : `<button class="btn-primary" onclick="startReading()">开始阅读</button>`,
+          secondaryAction: `<a class="btn-secondary btn-link" href="membership.html">查看会员中心</a>`
+        };
+      }
+
+      return {
+        title: novel.free_chapters > 0 ? `前 ${novel.free_chapters} 章可免费试读` : '后续章节含会员内容',
+        description: novel.free_chapters > 0
+          ? `试读后如想连续追更，开通会员即可直接解锁后续章节。`
+          : '当前作品以会员章节为主，开通后可连续阅读后续内容。',
+        benefits: [
+          '解锁后续 VIP 章节',
+          '阅读进度同步，换设备也能继续读',
+          '会员中心可统一查看有效期和权益'
+        ],
+        primaryAction: `<a class="btn-primary btn-link" href="membership.html">立即开通会员</a>`,
+        secondaryAction: novel.free_chapters > 0
+          ? `<button class="btn-secondary" onclick="startReading()">先试读前 ${novel.free_chapters} 章</button>`
+          : `<button class="btn-secondary" onclick="scrollToCatalog()">先看目录</button>`
+      };
+    }
+
+    function renderMembershipConversionCard(novel, memberCenter, progress) {
+      const state = buildMembershipConversionState(novel, memberCenter, progress);
+
+      return `
+        <section class="novel-membership-card">
+          <p class="novel-membership-kicker">当前阅读状态</p>
+          <h3>${escapeHtml(state.title)}</h3>
+          <p class="novel-membership-copy">${escapeHtml(state.description)}</p>
+          <div class="novel-membership-benefits">
+            ${state.benefits.map((benefit) => `<span class="novel-membership-benefit">${escapeHtml(benefit)}</span>`).join('')}
+          </div>
+          <div class="novel-membership-actions">
+            ${state.primaryAction}
+            ${state.secondaryAction}
+          </div>
+        </section>
+      `;
+    }
+
     function renderChapterItems(chapters) {
       return chapters.map((chapter) => `
         <div class="chapter-item ${chapter.needs_premium ? 'premium' : ''}" onclick="readChapter(${chapter.chapter_number})">
@@ -156,6 +244,8 @@
               ${buildPrimaryAction(novel, progress)}
               <button class="btn-secondary" onclick="scrollToCatalog()">查看目录</button>
             </div>
+
+            ${renderMembershipConversionCard(novel, window.__memberCenter || null, progress)}
 
             <div class="novel-status-grid">
               <div class="novel-status-card">
@@ -306,7 +396,8 @@
             }),
             fetch(`${API_URL}/ratings/${novelId}/user`, {
               headers: { 'Authorization': `Bearer ${token}` }
-            })
+            }),
+            loadMemberCenter()
           );
         }
 
@@ -329,6 +420,9 @@
           chapters = responses[4].ok ? await responses[4].json() : [];
           progress = responses[5].ok ? await responses[5].json() : null;
           userRating = responses[6].ok ? await responses[6].json() : { rating: 0 };
+          window.__memberCenter = responses[7] || null;
+        } else {
+          window.__memberCenter = null;
         }
 
         chapterListState.preview = previewPayload.preview || [];
