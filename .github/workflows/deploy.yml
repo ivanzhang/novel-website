@@ -1,0 +1,31 @@
+name: 部署到生产服务器
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 部署到服务器
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script_stop: true
+          timeout: 300s
+          script: bash /var/www/novel-website/deploy.sh
+
+      - name: 验证部署
+        run: |
+          sleep 5
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://re8.mom/api/health || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::健康检查失败 HTTP $STATUS"
+            exit 1
+          fi
+          echo "部署验证成功"

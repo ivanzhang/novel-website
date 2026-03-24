@@ -1,0 +1,12 @@
+.git
+.github
+.claude
+.superpowers
+docs
+*.md
+deploy.sh
+deploy.log
+test-api.sh
+backend/test
+backend/novels.db
+frontend/.DS_Store
