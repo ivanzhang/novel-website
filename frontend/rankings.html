@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="小说排行榜 — 热门榜、最新上架、字数最多，发现最受欢迎的中文小说">
+  <meta property="og:title" content="排行榜 - 中文小说阅读网">
+  <meta property="og:description" content="热门榜、最新上架、字数排行，发现最受欢迎的中文小说">
+  <meta property="og:type" content="website">
+  <title>排行榜 - 中文小说阅读网</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>📚 中文小说阅读网</h1>
+    <div class="nav">
+      <a href="index.html">首页</a>
+      <a href="categories.html">分类</a>
+      <a href="rankings.html">榜单</a>
+      <a href="history.html" id="historyLink" style="display:none;">阅读历史</a>
+      <a href="membership.html">会员中心</a>
+      <a href="login.html" id="loginLink">登录</a>
+      <a href="#" id="logoutLink" style="display:none;">退出</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="page-header">
+      <h2>排行榜</h2>
+      <p class="page-header-desc">发现最受欢迎的小说</p>
+    </div>
+
+    <div class="ranking-controls">
+      <div class="ranking-tabs" id="rankingTabs">
+        <button class="ranking-tab active" data-sort="popular">热门榜</button>
+        <button class="ranking-tab" data-sort="newest">最新上架</button>
+        <button class="ranking-tab" data-sort="words">字数最多</button>
+      </div>
+      <div class="ranking-filter">
+        <select id="categoryFilter" onchange="filterByCategory(this.value)" aria-label="分类筛选">
+          <option value="">全部分类</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="ranking-list" id="rankingList"></div>
+  </div>
+
+  <script>
+    const API_URL = '/api';
+    const token = localStorage.getItem('token');
+    let currentSort = 'popular';
+    let currentCategory = '';
+
+    if (token) {
+      document.getElementById('loginLink').style.display = 'none';
+      document.getElementById('logoutLink').style.display = 'block';
+      document.getElementById('historyLink').style.display = 'block';
+    }
+
+    document.getElementById('logoutLink').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      location.reload();
+    });
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+
+    const coverGradients = [
+      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+      'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+      'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+      'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+      'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)',
+      'linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)',
+    ];
+
+    function getCoverGradient(id) {
+      return coverGradients[(id - 1) % coverGradients.length];
+    }
+
+    // Tab 切换
+    document.getElementById('rankingTabs').addEventListener('click', (e) => {
+      const tab = e.target.closest('.ranking-tab');
+      if (!tab) return;
+      document.querySelectorAll('.ranking-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentSort = tab.dataset.sort;
+      loadRankings();
+    });
+
+    function filterByCategory(category) {
+      currentCategory = category;
+      loadRankings();
+    }
+
+    async function loadCategories() {
+      try {
+        const response = await fetch(`${API_URL}/novel-categories`);
+        const categories = await response.json();
+        const select = document.getElementById('categoryFilter');
+        categories.forEach(item => {
+          const option = document.createElement('option');
+          option.value = item.category;
+          option.textContent = `${item.category} (${item.count})`;
+          select.appendChild(option);
+        });
+      } catch (error) {
+        console.error('加载分类失败', error);
+      }
+    }
+
+    async function loadRankings() {
+      try {
+        const params = new URLSearchParams({
+          sort: currentSort,
+          limit: '20',
+          page: '1'
+        });
+        if (currentCategory) params.set('category', currentCategory);
+
+        const response = await fetch(`${API_URL}/novels?${params.toString()}`);
+        const data = await response.json();
+        const novels = data.novels || [];
+        const list = document.getElementById('rankingList');
+
+        if (novels.length === 0) {
+          list.innerHTML = '<p class="no-results">暂无数据</p>';
+          return;
+        }
+
+        list.innerHTML = novels.map((novel, index) => {
+          const rank = index + 1;
+          const rankClass = rank <= 3 ? `rank-top rank-${rank}` : '';
+          const firstChar = novel.title.charAt(0);
+          const coverHtml = novel.cover_url
+            ? `<img class="ranking-cover-img" src="${escapeHtml(novel.cover_url)}" alt="${escapeHtml(novel.title)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.parentElement.classList.add('novel-cover-fallback'); this.parentElement.textContent='${escapeHtml(firstChar)}';">`
+            : escapeHtml(firstChar);
+          const category = novel.primary_category || novel.source_category || '';
+          return `
+            <div class="ranking-item" onclick="location.href='novel.html?id=${novel.id}'">
+              <span class="ranking-rank ${rankClass}">${rank}</span>
+              <div class="ranking-cover ${novel.cover_url ? '' : 'novel-cover-fallback'}" style="background: ${getCoverGradient(novel.id)}">${coverHtml}</div>
+              <div class="ranking-info">
+                <h3>${escapeHtml(novel.title)}${novel.is_premium ? '<span class="premium-badge">VIP</span>' : ''}</h3>
+                <p class="author">作者：${escapeHtml(novel.author)}</p>
+                <div class="ranking-meta">
+                  ${category ? `<span class="ranking-category">${escapeHtml(category)}</span>` : ''}
+                  ${novel.chapter_count ? `<span>${novel.chapter_count}章</span>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('加载榜单失败', error);
+      }
+    }
+
+    loadCategories();
+    loadRankings();
+  </script>
+</body>
+</html>

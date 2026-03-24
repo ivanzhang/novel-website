@@ -2721,3 +2721,241 @@ body.night-mode .comment-input-area textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============ 页面标题 ============ */
+.page-header {
+  margin-bottom: 30px;
+}
+
+.page-header h2 {
+  font-size: 24px;
+  color: #2c3e50;
+  margin-bottom: 6px;
+}
+
+.page-header-desc {
+  color: #7f8c8d;
+  font-size: 15px;
+}
+
+/* ============ 分类浏览页 ============ */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  text-decoration: none;
+  color: #333;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.category-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+
+.category-card-icon {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.category-card-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.category-card-count {
+  font-size: 13px;
+  color: #95a5a6;
+}
+
+/* ============ 榜单页 ============ */
+.ranking-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.ranking-tabs {
+  display: flex;
+  gap: 4px;
+  background: #eef2f7;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.ranking-tab {
+  padding: 8px 20px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+  color: #555;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ranking-tab:hover {
+  color: #2c3e50;
+}
+
+.ranking-tab.active {
+  background: white;
+  color: #2c3e50;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.ranking-filter select {
+  padding: 8px 14px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  color: #2c3e50;
+  cursor: pointer;
+}
+
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.ranking-item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.ranking-rank {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #7f8c8d;
+  background: #f0f0f0;
+}
+
+.ranking-rank.rank-top {
+  color: white;
+}
+
+.ranking-rank.rank-1 {
+  background: linear-gradient(135deg, #f6d365, #f5a623);
+}
+
+.ranking-rank.rank-2 {
+  background: linear-gradient(135deg, #a8c0d6, #8fa8be);
+}
+
+.ranking-rank.rank-3 {
+  background: linear-gradient(135deg, #d4a373, #c2855a);
+}
+
+.ranking-cover {
+  flex-shrink: 0;
+  width: 56px;
+  height: 72px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: white;
+  overflow: hidden;
+}
+
+.ranking-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ranking-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ranking-info h3 {
+  font-size: 16px;
+  color: #2c3e50;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ranking-info .author {
+  font-size: 13px;
+  color: #7f8c8d;
+  margin-bottom: 4px;
+}
+
+.ranking-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: #95a5a6;
+}
+
+.ranking-category {
+  background: #eef2f7;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #5a7ea6;
+}
+
+@media (max-width: 768px) {
+  .category-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .category-card {
+    padding: 18px 12px;
+  }
+
+  .ranking-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ranking-tabs {
+    overflow-x: auto;
+  }
+
+  .ranking-cover {
+    width: 44px;
+    height: 56px;
+  }
+}

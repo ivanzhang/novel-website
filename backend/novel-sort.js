@@ -1,5 +1,7 @@
 function normalizeNovelSort(sort) {
-  return sort === 'newest' ? 'newest' : 'popular';
+  if (sort === 'newest') return 'newest';
+  if (sort === 'words') return 'words';
+  return 'popular';
 }
 
 function buildPopularityScoreSql() {
@@ -13,10 +15,13 @@ function buildPopularityScoreSql() {
 }
 
 function buildNovelOrderClause(sort) {
-  if (normalizeNovelSort(sort) === 'newest') {
+  const normalized = normalizeNovelSort(sort);
+  if (normalized === 'newest') {
     return 'created_at DESC, id DESC';
   }
-
+  if (normalized === 'words') {
+    return 'chapter_count DESC, created_at DESC, id DESC';
+  }
   return `${buildPopularityScoreSql()} DESC, created_at DESC, id DESC`;
 }
 
