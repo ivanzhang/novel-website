@@ -279,7 +279,7 @@ db.exec(`
   DROP INDEX IF EXISTS idx_source_records_source_key;
   CREATE INDEX IF NOT EXISTS idx_chapters_novel_id ON chapters(novel_id);
   CREATE INDEX IF NOT EXISTS idx_chapters_novel_chapter ON chapters(novel_id, chapter_number);
-  CREATE INDEX IF NOT EXISTS idx_chapters_content_file_path ON chapters(content_file_path);
+  DROP INDEX IF EXISTS idx_chapters_content_file_path;
   CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
   CREATE INDEX IF NOT EXISTS idx_progress_user_novel ON reading_progress(user_id, novel_id);
   CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks(user_id);

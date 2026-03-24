@@ -202,7 +202,7 @@ test('db 初始化应创建 JSON 导入元数据列和索引', () => {
       .map((row) => row.name);
 
     assert.ok(indexNames.includes('idx_novels_source_site_source_book_id'));
-    assert.ok(indexNames.includes('idx_chapters_content_file_path'));
+    assert.ok(!indexNames.includes('idx_chapters_content_file_path'));
   } finally {
     db.close();
   }
