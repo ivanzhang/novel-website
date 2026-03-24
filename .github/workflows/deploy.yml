@@ -16,9 +16,13 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script_stop: true
           timeout: 300s
-          script: bash /var/www/novel-website/deploy.sh
+          command_timeout: 5m
+          script: |
+            cd /var/www/novel-website
+            git fetch origin main
+            git reset --hard origin/main
+            bash deploy.sh
 
       - name: 验证部署
         run: |
