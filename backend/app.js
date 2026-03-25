@@ -15,7 +15,10 @@ const {
   applyCategoryIntent,
   renderIndexSeoPage,
   buildRobotsTxt,
-  buildSitemapXml,
+  buildSitemapIndex,
+  buildStaticSitemap,
+  buildNovelsSitemap,
+  SITEMAP_BATCH_SIZE,
 } = require('./seo');
 
 function createApp() {
@@ -46,15 +49,33 @@ function createApp() {
 
   app.get('/sitemap.xml', (req, res) => {
     const baseUrl = buildBaseUrl(req);
+    const novelCount = db.prepare('SELECT COUNT(*) as count FROM novels').get().count;
+    res.type('application/xml; charset=utf-8').send(buildSitemapIndex(baseUrl, novelCount));
+  });
+
+  app.get('/sitemaps/static.xml', (req, res) => {
+    const baseUrl = buildBaseUrl(req);
     const categories = db.prepare(`
       SELECT DISTINCT primary_category
       FROM novels
       WHERE primary_category IS NOT NULL AND TRIM(primary_category) != ''
       ORDER BY primary_category ASC
     `).all().map((row) => row.primary_category);
-    const novels = db.prepare('SELECT id FROM novels ORDER BY id ASC').all();
+    res.type('application/xml; charset=utf-8').send(buildStaticSitemap(baseUrl, categories));
+  });
 
-    res.type('application/xml; charset=utf-8').send(buildSitemapXml(baseUrl, categories, novels));
+  app.get('/sitemaps/novels-:page.xml', (req, res) => {
+    const page = parseInt(req.params.page, 10);
+    if (!page || page < 1) return res.status(404).send('Not found');
+
+    const baseUrl = buildBaseUrl(req);
+    const offset = (page - 1) * SITEMAP_BATCH_SIZE;
+    const novels = db.prepare(
+      'SELECT id, created_at FROM novels ORDER BY id ASC LIMIT ? OFFSET ?'
+    ).all(SITEMAP_BATCH_SIZE, offset);
+
+    if (novels.length === 0) return res.status(404).send('Not found');
+    res.type('application/xml; charset=utf-8').send(buildNovelsSitemap(baseUrl, novels));
   });
 
   app.get('/novel.html', (req, res, next) => {

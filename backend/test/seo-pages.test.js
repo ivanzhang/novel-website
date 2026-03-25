@@ -208,7 +208,7 @@ test('robots.txt 应暴露 sitemap 并屏蔽登录与会员中心页面', async 
   }
 });
 
-test('sitemap.xml 应包含首页、分类页和小说详情页', async () => {
+test('sitemap.xml 应返回 sitemap index，子 sitemap 包含对应 URL', async () => {
   const db = createTestDb();
   const previousSecret = process.env.JWT_SECRET;
 
@@ -236,15 +236,37 @@ test('sitemap.xml 应包含首页、分类页和小说详情页', async () => {
     });
 
     const { port } = server.address();
-    const response = await fetch(`http://127.0.0.1:${port}/sitemap.xml`);
-    const xml = await response.text();
+    const base = `http://127.0.0.1:${port}`;
 
-    assert.equal(response.status, 200);
-    assert.match(response.headers.get('content-type') || '', /xml/);
-    assert.match(xml, new RegExp(`<loc>http://127\\.0\\.0\\.1:${port}/</loc>`));
-    assert.match(xml, new RegExp(`<loc>http://127\\.0\\.0\\.1:${port}/index\\.html\\?category=玄幻</loc>`));
-    assert.match(xml, new RegExp(`<loc>http://127\\.0\\.0\\.1:${port}/novel\\.html\\?id=1</loc>`));
-    assert.match(xml, new RegExp(`<loc>http://127\\.0\\.0\\.1:${port}/novel\\.html\\?id=2</loc>`));
+    // sitemap index
+    const indexRes = await fetch(`${base}/sitemap.xml`);
+    const indexXml = await indexRes.text();
+    assert.equal(indexRes.status, 200);
+    assert.match(indexRes.headers.get('content-type') || '', /xml/);
+    assert.match(indexXml, /sitemapindex/);
+    assert.match(indexXml, /sitemaps\/static\.xml/);
+    assert.match(indexXml, /sitemaps\/novels-1\.xml/);
+
+    // static sitemap
+    const staticRes = await fetch(`${base}/sitemaps/static.xml`);
+    const staticXml = await staticRes.text();
+    assert.equal(staticRes.status, 200);
+    assert.match(staticXml, new RegExp(`<loc>${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/</loc>`));
+    assert.match(staticXml, /category=玄幻/);
+    assert.match(staticXml, /categories\.html/);
+    assert.match(staticXml, /rankings\.html/);
+
+    // novels sitemap
+    const novelsRes = await fetch(`${base}/sitemaps/novels-1.xml`);
+    const novelsXml = await novelsRes.text();
+    assert.equal(novelsRes.status, 200);
+    assert.match(novelsXml, /novel\.html\?id=1/);
+    assert.match(novelsXml, /novel\.html\?id=2/);
+    assert.match(novelsXml, /<lastmod>2026-03-21<\/lastmod>/);
+
+    // 不存在的分页应返回 404
+    const notFoundRes = await fetch(`${base}/sitemaps/novels-999.xml`);
+    assert.equal(notFoundRes.status, 404);
   } finally {
     if (server) {
       await new Promise((resolve, reject) => {

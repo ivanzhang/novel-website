@@ -58,7 +58,8 @@ function escapeHtml(value) {
 }
 
 function buildBaseUrl(req) {
-  return `${req.protocol}://${req.get('host')}`;
+  const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
+  return `${proto}://${req.get('host')}`;
 }
 
 function buildNovelTitle(novel) {
@@ -277,14 +278,47 @@ function escapeXml(value) {
     .replace(/'/g, '&apos;');
 }
 
-function buildSitemapXml(baseUrl, categories, novels) {
+const SITEMAP_BATCH_SIZE = 500;
+
+function buildSitemapIndex(baseUrl, novelCount) {
+  const novelBatches = Math.ceil(novelCount / SITEMAP_BATCH_SIZE);
+  const items = [
+    `  <sitemap>\n    <loc>${escapeXml(baseUrl)}/sitemaps/static.xml</loc>\n  </sitemap>`,
+    ...Array.from({ length: novelBatches }, (_, i) =>
+      `  <sitemap>\n    <loc>${escapeXml(baseUrl)}/sitemaps/novels-${i + 1}.xml</loc>\n  </sitemap>`
+    ),
+  ].join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${items}\n</sitemapindex>\n`;
+}
+
+function buildStaticSitemap(baseUrl, categories) {
   const urls = [
-    `${baseUrl}/`,
-    ...categories.map((category) => `${baseUrl}/index.html?category=${category}`),
-    ...novels.map((novel) => `${baseUrl}/novel.html?id=${novel.id}`),
+    { loc: `${baseUrl}/` },
+    { loc: `${baseUrl}/categories.html` },
+    { loc: `${baseUrl}/rankings.html` },
+    ...categories.map((c) => ({ loc: `${baseUrl}/index.html?category=${c}` })),
   ];
 
-  const items = urls.map((url) => `  <url><loc>${escapeXml(url)}</loc></url>`).join('\n');
+  return buildUrlsetXml(urls);
+}
+
+function buildNovelsSitemap(baseUrl, novels) {
+  const urls = novels.map((n) => ({
+    loc: `${baseUrl}/novel.html?id=${n.id}`,
+    lastmod: n.created_at ? n.created_at.slice(0, 10) : undefined,
+  }));
+
+  return buildUrlsetXml(urls);
+}
+
+function buildUrlsetXml(urls) {
+  const items = urls.map((u) => {
+    const parts = [`    <loc>${escapeXml(u.loc)}</loc>`];
+    if (u.lastmod) parts.push(`    <lastmod>${escapeXml(u.lastmod)}</lastmod>`);
+    return `  <url>\n${parts.join('\n')}\n  </url>`;
+  }).join('\n');
+
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${items}\n</urlset>\n`;
 }
 
@@ -300,5 +334,8 @@ module.exports = {
   applyCategoryIntent,
   renderIndexSeoPage,
   buildRobotsTxt,
-  buildSitemapXml,
+  buildSitemapIndex,
+  buildStaticSitemap,
+  buildNovelsSitemap,
+  SITEMAP_BATCH_SIZE,
 };
