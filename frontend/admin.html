@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="后台入口 - 查看内容质量、导入任务和系统概览">
+  <title>后台入口 - 中文小说阅读网</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    :root {
+      --admin-bg: linear-gradient(180deg, #f4efe4 0%, #ebe3d4 100%);
+      --admin-ink: #1f1a17;
+      --admin-panel: rgba(255, 250, 242, 0.88);
+      --admin-line: rgba(80, 56, 34, 0.12);
+      --admin-accent: #8d4f22;
+      --admin-accent-soft: #e7c5a1;
+      --admin-muted: #6f6258;
+      --admin-shadow: 0 18px 40px rgba(61, 40, 22, 0.12);
+    }
+
+    body.admin-page {
+      background: var(--admin-bg);
+      color: var(--admin-ink);
+    }
+
+    .admin-shell {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+      margin-top: 24px;
+    }
+
+    .admin-sidebar,
+    .admin-main-panel,
+    .admin-card,
+    .admin-placeholder {
+      background: var(--admin-panel);
+      border: 1px solid var(--admin-line);
+      box-shadow: var(--admin-shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .admin-sidebar {
+      position: sticky;
+      top: 20px;
+      border-radius: 24px;
+      overflow: hidden;
+    }
+
+    .admin-sidebar-header {
+      padding: 24px 24px 18px;
+      border-bottom: 1px solid var(--admin-line);
+      background: linear-gradient(135deg, rgba(141, 79, 34, 0.14), rgba(231, 197, 161, 0.2));
+    }
+
+    .admin-sidebar-header p {
+      margin: 0 0 10px;
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--admin-accent);
+    }
+
+    .admin-sidebar-header h2 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.1;
+    }
+
+    .admin-sidebar-copy {
+      margin: 12px 0 0;
+      color: var(--admin-muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .admin-nav {
+      display: grid;
+      gap: 10px;
+      padding: 18px;
+    }
+
+    .admin-nav-link {
+      width: 100%;
+      border: 1px solid var(--admin-line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.65);
+      color: var(--admin-ink);
+      padding: 14px 16px;
+      text-align: left;
+      cursor: pointer;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .admin-nav-link strong,
+    .admin-nav-link span {
+      display: block;
+    }
+
+    .admin-nav-link strong {
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .admin-nav-link span {
+      font-size: 12px;
+      color: var(--admin-muted);
+    }
+
+    .admin-nav-link.active {
+      background: #231a14;
+      color: #f9f1e7;
+      border-color: #231a14;
+      transform: translateX(4px);
+    }
+
+    .admin-nav-link.active span {
+      color: rgba(249, 241, 231, 0.72);
+    }
+
+    .admin-main {
+      display: grid;
+      gap: 18px;
+    }
+
+    .admin-main-panel {
+      border-radius: 28px;
+      padding: 28px;
+    }
+
+    .admin-eyebrow {
+      margin: 0 0 10px;
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--admin-accent);
+    }
+
+    .admin-main-panel h3 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.05;
+    }
+
+    .admin-main-copy {
+      margin: 14px 0 0;
+      max-width: 760px;
+      color: var(--admin-muted);
+      line-height: 1.7;
+    }
+
+    .admin-main-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 22px;
+    }
+
+    .admin-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .admin-action.primary {
+      background: #231a14;
+      color: #f9f1e7;
+    }
+
+    .admin-action.secondary {
+      border: 1px solid var(--admin-line);
+      color: var(--admin-ink);
+      background: rgba(255, 255, 255, 0.64);
+    }
+
+    .admin-section {
+      display: none;
+      gap: 18px;
+    }
+
+    .admin-section.active {
+      display: grid;
+    }
+
+    .admin-stats-grid,
+    .admin-card-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .admin-card,
+    .admin-placeholder {
+      border-radius: 22px;
+      padding: 20px;
+    }
+
+    .admin-stat-label {
+      display: block;
+      color: var(--admin-muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .admin-stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .admin-stat-meta {
+      margin-top: 10px;
+      color: var(--admin-muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .admin-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .admin-card-header h4 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .admin-tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(141, 79, 34, 0.12);
+      color: var(--admin-accent);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .admin-report-meta {
+      display: grid;
+      gap: 8px;
+      color: var(--admin-muted);
+      font-size: 14px;
+    }
+
+    .admin-sample-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .admin-sample-item {
+      border: 1px solid var(--admin-line);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.54);
+      padding: 14px;
+    }
+
+    .admin-sample-item strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .admin-sample-item p {
+      margin: 0;
+      color: var(--admin-muted);
+      font-size: 13px;
+      line-height: 1.55;
+      word-break: break-word;
+    }
+
+    .admin-placeholder p {
+      margin: 10px 0 0;
+      color: var(--admin-muted);
+      line-height: 1.7;
+    }
+
+    .admin-task-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .admin-task-item {
+      border: 1px solid var(--admin-line);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.58);
+      padding: 18px;
+    }
+
+    .admin-task-topline {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .admin-task-topline h4 {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .admin-task-topline p {
+      margin: 6px 0 0;
+      color: var(--admin-muted);
+      font-size: 13px;
+    }
+
+    .admin-task-summary {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-bottom: 14px;
+    }
+
+    .admin-task-summary strong,
+    .admin-task-summary span {
+      display: block;
+    }
+
+    .admin-task-summary span {
+      color: var(--admin-muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .admin-task-summary strong {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .admin-loading,
+    .admin-empty {
+      color: var(--admin-muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .admin-detail-trigger {
+      margin-top: 10px;
+      border: 1px solid var(--admin-line);
+      background: rgba(35, 26, 20, 0.04);
+      color: var(--admin-ink);
+      border-radius: 999px;
+      min-height: 34px;
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .admin-detail-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(520px, 92vw);
+      height: 100vh;
+      background: rgba(255, 249, 241, 0.98);
+      border-left: 1px solid var(--admin-line);
+      box-shadow: -20px 0 44px rgba(61, 40, 22, 0.16);
+      transform: translateX(100%);
+      transition: transform 0.24s ease;
+      z-index: 40;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .admin-detail-drawer.open {
+      transform: translateX(0);
+    }
+
+    .admin-detail-header {
+      padding: 20px 20px 14px;
+      border-bottom: 1px solid var(--admin-line);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .admin-detail-header h4 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .admin-detail-header p {
+      margin: 8px 0 0;
+      color: var(--admin-muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .admin-detail-close {
+      border: 1px solid var(--admin-line);
+      background: #fff;
+      border-radius: 999px;
+      width: 38px;
+      height: 38px;
+      font-size: 18px;
+      cursor: pointer;
+      flex: none;
+    }
+
+    .admin-detail-body {
+      padding: 18px 20px 24px;
+      overflow: auto;
+    }
+
+    .admin-detail-body pre {
+      margin: 0;
+      padding: 16px;
+      border-radius: 18px;
+      background: #231a14;
+      color: #f7efe6;
+      font-size: 12px;
+      line-height: 1.65;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .admin-detail-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 12, 7, 0.28);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.24s ease;
+      z-index: 30;
+    }
+
+    .admin-detail-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    @media (max-width: 960px) {
+      .admin-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-sidebar {
+        position: static;
+      }
+
+      .admin-stats-grid,
+      .admin-card-grid,
+      .admin-task-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .admin-main-panel {
+        padding: 22px;
+      }
+
+      .admin-main-panel h3 {
+        font-size: 28px;
+      }
+
+      .admin-stats-grid,
+      .admin-card-grid,
+      .admin-task-summary {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-nav {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="admin-page">
+  <header>
+    <h1>📚 中文小说阅读网</h1>
+    <div class="nav">
+      <a href="index.html">首页</a>
+      <a href="categories.html">分类</a>
+      <a href="rankings.html">榜单</a>
+      <a href="membership.html">会员中心</a>
+      <a href="admin.html">后台入口</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="admin-shell">
+      <aside class="admin-sidebar">
+        <div class="admin-sidebar-header">
+          <p>运营后台</p>
+          <h2>后台入口</h2>
+          <p class="admin-sidebar-copy">先挂上最小导航骨架，优先把内容质量和数据治理状态在线可见。</p>
+        </div>
+        <nav class="admin-nav" aria-label="后台导航">
+          <button class="admin-nav-link active" type="button" data-section="quality">
+            <strong>内容质量</strong>
+            <span>清洗报告、审查结果、问题样本</span>
+          </button>
+          <button class="admin-nav-link" type="button" data-section="imports">
+            <strong>导入任务</strong>
+            <span>后续接入批量导入、增量补导记录</span>
+          </button>
+          <button class="admin-nav-link" type="button" data-section="system">
+            <strong>系统概览</strong>
+            <span>预留站点运行与存储治理卡位</span>
+          </button>
+        </nav>
+      </aside>
+
+      <main class="admin-main">
+        <section class="admin-main-panel">
+          <p class="admin-eyebrow">内容治理</p>
+          <h3>内容质量后台</h3>
+          <p class="admin-main-copy">这里聚合离线清洗报告和内容审查报告，先帮助你判断当前书库是否适合继续导入、上线和复审。</p>
+          <div class="admin-main-actions">
+            <a class="admin-action primary" href="#quality">查看内容质量</a>
+            <a class="admin-action secondary" href="index.html">返回站点首页</a>
+          </div>
+        </section>
+
+        <section class="admin-section active" id="admin-section-quality">
+          <div class="admin-stats-grid" id="qualityStats">
+            <article class="admin-card"><div class="admin-loading">正在读取最新内容质量报告…</div></article>
+          </div>
+          <div class="admin-card-grid">
+            <article class="admin-card">
+              <div class="admin-card-header">
+                <div>
+                  <p class="admin-eyebrow">最新清洗</p>
+                  <h4>章节清洗写回</h4>
+                </div>
+                <span class="admin-tag" id="cleanModeTag">读取中</span>
+              </div>
+              <div class="admin-report-meta" id="cleanReportMeta"></div>
+              <div class="admin-sample-list" id="cleanSamples"></div>
+            </article>
+
+            <article class="admin-card">
+              <div class="admin-card-header">
+                <div>
+                  <p class="admin-eyebrow">最新审查</p>
+                  <h4>内容巡检结果</h4>
+                </div>
+                <span class="admin-tag" id="auditModeTag">读取中</span>
+              </div>
+              <div class="admin-report-meta" id="auditReportMeta"></div>
+              <div class="admin-sample-list" id="auditSamples"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="admin-section" id="admin-section-imports">
+          <article class="admin-card">
+            <div class="admin-card-header">
+              <div>
+                <p class="admin-eyebrow">最近任务</p>
+                <h4>文件型任务看板</h4>
+              </div>
+              <span class="admin-tag" id="importTaskCount">读取中</span>
+            </div>
+            <div class="admin-report-meta" id="importTaskMeta"></div>
+            <div class="admin-task-list" id="importTaskList">
+              <div class="admin-loading">正在读取最近的导入、上传和批处理任务…</div>
+            </div>
+          </article>
+        </section>
+
+        <section class="admin-section" id="admin-section-system">
+          <article class="admin-placeholder">
+            <p class="admin-eyebrow">占位</p>
+            <h4>系统概览</h4>
+            <p>后续可以挂库存规模、存储路径、封面缺失率、增量导入量和 SEO 基础指标。</p>
+          </article>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="admin-detail-backdrop" id="adminDetailBackdrop" onclick="closeAdminDetail()"></div>
+  <aside class="admin-detail-drawer" id="adminDetailDrawer" aria-hidden="true">
+    <div class="admin-detail-header">
+      <div>
+        <p class="admin-eyebrow">任务详情</p>
+        <h4 id="adminDetailTitle">详情</h4>
+        <p id="adminDetailSubtitle">这里显示所选任务或样本的完整信息。</p>
+      </div>
+      <button class="admin-detail-close" type="button" aria-label="关闭详情" onclick="closeAdminDetail()">×</button>
+    </div>
+    <div class="admin-detail-body">
+      <pre id="adminDetailContent">{}</pre>
+    </div>
+  </aside>
+
+  <script>
+    const API_URL = '/api';
+    const adminDetailStore = [];
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function formatDate(value) {
+      if (!value) return '暂无';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '暂无';
+      return date.toLocaleString('zh-CN');
+    }
+
+    function switchAdminSection(section) {
+      document.querySelectorAll('.admin-nav-link').forEach((button) => {
+        button.classList.toggle('active', button.dataset.section === section);
+      });
+      document.querySelectorAll('.admin-section').forEach((panel) => {
+        panel.classList.toggle('active', panel.id === `admin-section-${section}`);
+      });
+    }
+
+    function registerAdminDetail(payload) {
+      adminDetailStore.push(payload);
+      return adminDetailStore.length - 1;
+    }
+
+    function openAdminDetail(index) {
+      const detail = adminDetailStore[index];
+      if (!detail) return;
+      document.getElementById('adminDetailTitle').textContent = detail.title || '详情';
+      document.getElementById('adminDetailSubtitle').textContent = detail.subtitle || '完整信息';
+      document.getElementById('adminDetailContent').textContent = JSON.stringify(detail.data || {}, null, 2);
+      document.getElementById('adminDetailDrawer').classList.add('open');
+      document.getElementById('adminDetailDrawer').setAttribute('aria-hidden', 'false');
+      document.getElementById('adminDetailBackdrop').classList.add('open');
+    }
+
+    function closeAdminDetail() {
+      document.getElementById('adminDetailDrawer').classList.remove('open');
+      document.getElementById('adminDetailDrawer').setAttribute('aria-hidden', 'true');
+      document.getElementById('adminDetailBackdrop').classList.remove('open');
+    }
+
+    document.querySelectorAll('.admin-nav-link').forEach((button) => {
+      button.addEventListener('click', () => switchAdminSection(button.dataset.section));
+    });
+
+    function buildStatCard(label, value, meta) {
+      return `
+        <article class="admin-card">
+          <span class="admin-stat-label">${escapeHtml(label)}</span>
+          <strong class="admin-stat-value">${escapeHtml(value)}</strong>
+          <div class="admin-stat-meta">${escapeHtml(meta || '')}</div>
+        </article>
+      `;
+    }
+
+    function renderSamples(containerId, samples, formatter) {
+      const container = document.getElementById(containerId);
+      if (!samples || samples.length === 0) {
+        container.innerHTML = '<div class="admin-empty">暂无样本</div>';
+        return;
+      }
+
+      container.innerHTML = samples.map((sample) => formatter(sample)).join('');
+    }
+
+    function renderContentQuality(payload) {
+      const clean = payload.clean && payload.clean.latest ? payload.clean.latest : null;
+      const audit = payload.audit && payload.audit.latest ? payload.audit.latest : null;
+
+      const stats = [
+        buildStatCard('最新清洗写回', clean ? (clean.summary.written || 0) : '暂无', clean ? `扫描 ${clean.summary.scanned || 0} 章` : '暂无报告'),
+        buildStatCard('最新命中变更', clean ? (clean.summary.changed || 0) : '暂无', clean ? `未变化 ${clean.summary.unchanged || 0} 章` : '暂无报告'),
+        buildStatCard('疑似广告残留', audit ? (audit.summary.contentQuality || 0) : '暂无', audit ? `抽查 ${audit.summary.scanned || 0} 章` : '暂无报告'),
+        buildStatCard('预览异常', audit ? (audit.summary.preview || 0) : '暂无', audit ? `过短 ${audit.summary.shortContent || 0} 章` : '暂无报告'),
+      ];
+      document.getElementById('qualityStats').innerHTML = stats.join('');
+
+      document.getElementById('cleanModeTag').textContent = clean && clean.mode ? clean.mode : '暂无';
+      document.getElementById('auditModeTag').textContent = audit && audit.checks ? `${audit.checks.length} 项检查` : '暂无';
+
+      document.getElementById('cleanReportMeta').innerHTML = clean ? `
+        <span>文件：${escapeHtml(clean.filename)}</span>
+        <span>更新时间：${escapeHtml(formatDate(clean.updated_at))}</span>
+        <span>失败数：${escapeHtml(clean.summary.failed || 0)}</span>
+      ` : '<div class="admin-empty">暂无清洗报告</div>';
+
+      document.getElementById('auditReportMeta').innerHTML = audit ? `
+        <span>文件：${escapeHtml(audit.filename)}</span>
+        <span>更新时间：${escapeHtml(formatDate(audit.updated_at))}</span>
+        <span>缺封面：${escapeHtml(audit.summary.missingFiles || 0)}</span>
+      ` : '<div class="admin-empty">暂无审查报告</div>';
+
+      renderSamples('cleanSamples', clean ? clean.samples : [], (sample) => `
+        <div class="admin-sample-item">
+          <strong>${escapeHtml(sample.bookId || '-')} / ${escapeHtml(sample.chapterNumber || '-')}</strong>
+          <p>长度变化：${escapeHtml(sample.beforeLength || 0)} → ${escapeHtml(sample.afterLength || 0)}</p>
+          <button class="admin-detail-trigger" type="button" onclick="openAdminDetail(${registerAdminDetail({
+            title: `清洗样本 ${sample.bookId || '-'} / ${sample.chapterNumber || '-'}`,
+            subtitle: clean ? clean.filename : '最新清洗报告',
+            data: sample,
+          })})">查看详情</button>
+        </div>
+      `);
+
+      renderSamples('auditSamples', audit ? audit.samples : [], (sample) => `
+        <div class="admin-sample-item">
+          <strong>${escapeHtml(sample.bookId || '-')} / ${escapeHtml(sample.chapterNumber || '-')}</strong>
+          <p>问题：${escapeHtml([
+            sample.coverMissing ? '缺封面' : '',
+            sample.contentQuality ? '疑似广告' : '',
+            sample.previewIssue ? '预览异常' : '',
+            sample.shortContent ? '章节过短' : '',
+          ].filter(Boolean).join('、') || '已记录')}</p>
+          <button class="admin-detail-trigger" type="button" onclick="openAdminDetail(${registerAdminDetail({
+            title: `审查样本 ${sample.bookId || '-'} / ${sample.chapterNumber || '-'}`,
+            subtitle: audit ? audit.filename : '最新审查报告',
+            data: sample,
+          })})">查看详情</button>
+        </div>
+      `);
+
+      renderImportTasks(payload.tasks || { latest: [], total_reports: 0 });
+    }
+
+    function summarizeTaskMetrics(task) {
+      const summary = task && task.summary ? task.summary : {};
+      const entries = Object.entries(summary).slice(0, 3);
+
+      if (entries.length === 0) {
+        return '<div class="admin-empty">暂无摘要</div>';
+      }
+
+      return entries.map(([key, value]) => `
+        <div>
+          <span>${escapeHtml(key)}</span>
+          <strong>${escapeHtml(value)}</strong>
+        </div>
+      `).join('');
+    }
+
+    function renderImportTasks(taskPayload) {
+      const latestTasks = Array.isArray(taskPayload.latest) ? taskPayload.latest : [];
+      document.getElementById('importTaskCount').textContent = latestTasks.length ? `${latestTasks.length} 条` : '暂无';
+      document.getElementById('importTaskMeta').innerHTML = latestTasks.length
+        ? `<span>任务报告数：${escapeHtml(taskPayload.total_reports || 0)}</span>`
+        : '<div class="admin-empty">暂无任务报告</div>';
+
+      const container = document.getElementById('importTaskList');
+      if (!latestTasks.length) {
+        container.innerHTML = '<div class="admin-empty">目前还没有可展示的文件型任务报告。</div>';
+        return;
+      }
+
+      container.innerHTML = latestTasks.map((task) => `
+        <article class="admin-task-item">
+          <div class="admin-task-topline">
+            <div>
+              <h4>${escapeHtml(task.task || '未命名任务')}</h4>
+              <p>${escapeHtml(task.filename || '')} · ${escapeHtml(formatDate(task.updated_at))}</p>
+            </div>
+            <span class="admin-tag">${escapeHtml(task.status || 'unknown')}</span>
+          </div>
+          <div class="admin-task-summary">
+            ${summarizeTaskMetrics(task)}
+          </div>
+          <div class="admin-sample-list">
+            ${(task.samples || []).length
+              ? task.samples.map((sample) => `
+                <div class="admin-sample-item">
+                  <strong>${escapeHtml(sample.bookId || sample.title || sample.file || sample.chapterNumber || '样本')}</strong>
+                  <p>${escapeHtml(JSON.stringify(sample))}</p>
+                  <button class="admin-detail-trigger" type="button" onclick="openAdminDetail(${registerAdminDetail({
+                    title: `任务样本 ${sample.bookId || sample.file || sample.title || '样本'}`,
+                    subtitle: task.filename || task.task || '任务报告',
+                    data: sample,
+                  })})">查看样本</button>
+                </div>
+              `).join('')
+              : '<div class="admin-empty">暂无样本</div>'}
+          </div>
+          <button class="admin-detail-trigger" type="button" onclick="openAdminDetail(${registerAdminDetail({
+            title: task.task || '任务详情',
+            subtitle: `${task.filename || ''} · ${task.status || ''}`,
+            data: task,
+          })})">查看任务详情</button>
+        </article>
+      `).join('');
+    }
+
+    async function loadContentQuality() {
+      try {
+        const response = await fetch(`${API_URL}/admin/content-quality`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const payload = await response.json();
+        renderContentQuality(payload);
+      } catch (error) {
+        document.getElementById('qualityStats').innerHTML = '<article class="admin-card"><div class="admin-loading">内容质量报告加载失败</div></article>';
+        document.getElementById('cleanReportMeta').innerHTML = '<div class="admin-empty">暂时无法读取清洗报告</div>';
+        document.getElementById('auditReportMeta').innerHTML = '<div class="admin-empty">暂时无法读取审查报告</div>';
+        document.getElementById('cleanSamples').innerHTML = '';
+        document.getElementById('auditSamples').innerHTML = '';
+      }
+    }
+
+    loadContentQuality();
+  </script>
+</body>
+</html>

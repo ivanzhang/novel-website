@@ -142,6 +142,7 @@ function createApp() {
   app.use('/api', require('./routes/novels'));
   app.use('/api', require('./routes/auth'));
   app.use('/api', require('./routes/user'));
+  app.use('/api', require('./routes/admin'));
 
   app.get('/', (req, res) => {
     const category = typeof req.query.category === 'string' ? req.query.category.trim() : '';
