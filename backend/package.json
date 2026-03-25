@@ -6,10 +6,16 @@
   "scripts": {
     "start": "node server.js",
     "import:biquge-json": "node import-biquge-json.js",
+    "clean:biquge-chapters": "node clean-biquge-chapters.js",
+    "audit:biquge-content": "node audit-biquge-content.js",
     "reconcile:biquge-import": "node biquge-import-reconcile.js",
     "fix:biquge-covers": "node fix-biquge-cover-paths.js",
     "export:bige7-range": "node apiqu-range-export.js --target bige7",
-    "retry:bige7-range": "node apiqu-range-retry.js --target bige7"
+    "retry:bige7-range": "node apiqu-range-retry.js --target bige7",
+    "annotate:storage-batch": "node annotate-storage-batch.js",
+    "export:biquge-batch": "node biquge-batch-export.js",
+    "upload:telegraph-batch": "node upload-telegraph-batch.js",
+    "update:biquge-cover-cdn": "node update-biquge-cover-cdn.js"
   },
   "dependencies": {
     "express": "^4.18.2",
