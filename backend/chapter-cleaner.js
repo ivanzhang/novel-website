@@ -32,10 +32,16 @@ function removeInlineAds(text) {
 }
 
 function removeWatermarkTokens(text) {
-  return text.replace(
-    /\b[a-z0-9]{2,}\s*[ヽ●⊙◆◇¤○◎☆♀♟♜★Θ⊕點点。．・·•●‧｡]+\s*(?:c\s*c|c\s*o\s*m|o\s*r\s*g|n\s*e\s*t|c\s*n)(?=$|[^a-z])/giu,
-    ''
-  );
+  const token =
+    '[a-z0-9]{2,}\\s*[ヽ●⊙◆◇¤○◎☆♀♟♜★Θ⊕點点。．・·•●‧｡]+\\s*(?:c\\s*c|c\\s*o\\s*m|o\\s*r\\s*g|n\\s*e\\s*t|c\\s*n)';
+  const repeatedTokenPattern = new RegExp(`(?:${token})+`, 'giu');
+  const tokenWithTrailingNoisePattern = new RegExp(`${token}(?:w{1,3})?(?=$|[^\\u4e00-\\u9fffa-z0-9])`, 'giu');
+  const helperPhrasePattern = /w?书友整~?理提~?供/gu;
+
+  return text
+    .replace(repeatedTokenPattern, '')
+    .replace(tokenWithTrailingNoisePattern, '')
+    .replace(helperPhrasePattern, '');
 }
 
 function tidyWhitespace(text) {
