@@ -88,7 +88,7 @@ test('parseArgs 支持 bige7 目标站点', () => {
   ]);
 
   assert.equal(options.target.name, 'bige7');
-  assert.equal(options.outputDir.endsWith('storage/json/bige7'), true);
+  assert.equal(options.outputDir.endsWith('storage/json/all'), true);
 });
 
 test('getTargetConfig 返回 bige7 目标配置', () => {
@@ -96,7 +96,7 @@ test('getTargetConfig 返回 bige7 目标配置', () => {
 
   assert.equal(target.name, 'bige7');
   assert.equal(target.site, 'https://www.bqg291.cc');
-  assert.equal(target.outputDir.endsWith('storage/json/bige7'), true);
+  assert.equal(target.outputDir.endsWith('storage/json/all'), true);
 });
 
 test('buildChapterUrl 按目标站生成阅读地址', () => {

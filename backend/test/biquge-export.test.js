@@ -166,6 +166,6 @@ test('parseArgs 应该支持 bige7 目标站点', () => {
   assert.equal(result.target.name, 'bige7');
   assert.equal(result.site, 'https://www.bqg291.cc');
   assert.equal(result.sourceApiHost, 'https://apibi.cc');
-  assert.equal(result.outputDir.endsWith('storage/json/bige7'), true);
+  assert.equal(result.outputDir.endsWith('storage/json/all'), true);
   assert.deepEqual(result.categories.length > 0, true);
 });

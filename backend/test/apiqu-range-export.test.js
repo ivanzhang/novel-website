@@ -63,5 +63,17 @@ test('parseArgs 支持 apiqu 枚举模式参数', () => {
   assert.equal(options.concurrency, 24);
   assert.equal(options.batchSize, 500);
   assert.equal(options.target.name, 'bige7');
-  assert.equal(options.outputDir.endsWith('storage/json/bige7'), true);
+  assert.equal(options.outputDir.endsWith('storage/json/all'), true);
+});
+
+test('parseArgs 支持 all 目标站点别名', () => {
+  const options = parseArgs([
+    'node',
+    'backend/apiqu-range-export.js',
+    '--target',
+    'all',
+  ]);
+
+  assert.equal(options.target.name, 'all');
+  assert.equal(options.outputDir.endsWith('storage/json/all'), true);
 });
