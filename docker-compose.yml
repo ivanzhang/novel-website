@@ -4,6 +4,9 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     volumes:
+      - ./backend:/app/backend
+      - backend_modules:/app/backend/node_modules
+      - ./frontend:/app/frontend:ro
       - ./backend/novels.db:/app/data/novels.db
       - ./storage/json/biquge:/app/storage/json/biquge:ro
     environment:
@@ -46,3 +49,6 @@ services:
         max-size: "10m"
         max-file: "3"
     restart: unless-stopped
+
+volumes:
+  backend_modules:
