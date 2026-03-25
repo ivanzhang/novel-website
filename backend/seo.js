@@ -78,6 +78,21 @@ function buildNovelDescription(novel) {
   return segments.join('，');
 }
 
+function resolveCoverUrl(coverUrl, baseUrl) {
+  const normalized = String(coverUrl || '').trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  // 封面已是 CDN 绝对地址时直接使用，避免错误拼接站点域名。
+  if (/^https?:\/\//i.test(normalized)) {
+    return normalized;
+  }
+
+  return normalized.startsWith('/') ? `${baseUrl}${normalized}` : `${baseUrl}/${normalized}`;
+}
+
 function buildNovelStructuredData(novel, baseUrl, canonicalUrl) {
   const payload = {
     '@context': 'https://schema.org',
@@ -89,7 +104,7 @@ function buildNovelStructuredData(novel, baseUrl, canonicalUrl) {
     },
     description: novel.description || `${novel.title}在线阅读`,
     genre: novel.primary_category || novel.source_category || undefined,
-    image: novel.cover_url ? `${baseUrl}${novel.cover_url}` : undefined,
+    image: resolveCoverUrl(novel.cover_url, baseUrl) || undefined,
     url: canonicalUrl,
   };
 
@@ -215,7 +230,7 @@ function renderNovelSeoPage(templateHtml, novel, baseUrl) {
   const canonicalUrl = `${baseUrl}/novel.html?id=${novel.id}`;
   const title = buildNovelTitle(novel);
   const description = buildNovelDescription(novel);
-  const imageUrl = novel.cover_url ? `${baseUrl}${novel.cover_url}` : '';
+  const imageUrl = resolveCoverUrl(novel.cover_url, baseUrl);
   const jsonLd = buildNovelStructuredData(novel, baseUrl, canonicalUrl);
 
   let html = templateHtml

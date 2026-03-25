@@ -35,6 +35,7 @@ async function createTempRoot() {
       cover: {
         originalUrl: 'https://www.bqg291.cc/bookimg/2/2530.jpg',
         localPath: 'covers/2530.jpg',
+        cdnUrl: 'https://aixs.us.ci/file/2530.jpg',
       },
       chapterCount: 2,
       chapters: [
@@ -129,9 +130,12 @@ test('parseArgs 应该支持 --root 指定扫描目录', () => {
     'backend/import-biquge-json.js',
     '--root',
     '/tmp/import-root',
+    '--report',
+    '/tmp/import-report.json',
   ]);
 
   assert.equal(result.root, '/tmp/import-root');
+  assert.equal(result.report, '/tmp/import-report.json');
 });
 
 test('importBiqugeJson 应该扫描 books 和 chapters、写入摘要并返回统计', async () => {
@@ -189,7 +193,7 @@ test('importBiqugeJson 应该扫描 books 和 chapters、写入摘要并返回�
     assert.equal(novel2530.author, '天蚕土豆');
     assert.equal(novel2530.chapter_count, 2);
     assert.equal(novel2530.content_storage, 'json');
-    assert.equal(novel2530.cover_url, '/covers/2530.jpg');
+    assert.equal(novel2530.cover_url, 'https://aixs.us.ci/file/2530.jpg');
 
     const chapter2530 = db.prepare(
       'SELECT chapter_number, title, content, content_file_path, content_preview FROM chapters WHERE novel_id = (SELECT id FROM novels WHERE source_book_id = ?) AND chapter_number = ?'
@@ -211,6 +215,28 @@ test('importBiqugeJson 应该扫描 books 和 chapters、写入摘要并返回�
     ).get('9999');
     assert.equal(category9999.source_category, '都市');
     assert.equal(category9999.primary_category, '都市');
+  } finally {
+    db.close();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('importBiqugeJson 应支持输出任务报告', async () => {
+  const db = createTestDb();
+  const root = await createTempRoot();
+  const reportPath = path.join(root, 'reports', 'import-jobs', 'import-biquge-json.json');
+
+  try {
+    const { importBiqugeJson } = loadImporter();
+    const result = await importBiqugeJson({ root, report: reportPath });
+    const report = JSON.parse(await fs.readFile(reportPath, 'utf8'));
+
+    assert.equal(result.reportPath, reportPath);
+    assert.equal(report.task, 'import-biquge-json');
+    assert.equal(report.status, 'success');
+    assert.equal(report.summary.total, 2);
+    assert.ok(Array.isArray(report.items));
+    assert.equal(report.items.length, 2);
   } finally {
     db.close();
     await fs.rm(root, { recursive: true, force: true });

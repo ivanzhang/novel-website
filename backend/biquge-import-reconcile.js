@@ -2,6 +2,7 @@
 
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { buildDefaultTaskReportPath, writeTaskReport } = require('./task-report');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const DEFAULT_ROOT = path.join(PROJECT_ROOT, 'storage/json/biquge');
@@ -30,6 +31,7 @@ function parseArgs(argv = process.argv) {
   const options = {
     root: DEFAULT_ROOT,
     limit: DEFAULT_LIMIT,
+    report: null,
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -42,6 +44,10 @@ function parseArgs(argv = process.argv) {
         break;
       case '--limit':
         options.limit = Math.max(1, Number(args[index + 1]) || DEFAULT_LIMIT);
+        index += 1;
+        break;
+      case '--report':
+        options.report = path.resolve(PROJECT_ROOT, args[index + 1] || '');
         index += 1;
         break;
       case '--help':
@@ -61,11 +67,12 @@ function printHelp() {
 笔趣阁 JSON 导入对账工具
 
 用法:
-  node backend/biquge-import-reconcile.js [--root ./storage/json/biquge] [--limit 20]
+  node backend/biquge-import-reconcile.js [--root ./storage/json/biquge] [--limit 20] [--report ./storage/json/biquge/reports/import-jobs/reconcile.json]
 
 选项:
   --root   扫描源目录，默认 ./storage/json/biquge
   --limit  终端最多打印多少条未入库结果，默认 20
+  --report 输出任务报告 JSON
   --help   显示帮助
 `);
 }
@@ -158,7 +165,7 @@ async function reconcileBiqugeImport(options = {}) {
     .filter((bookId) => !validBookIdSet.has(bookId))
     .sort((a, b) => a.localeCompare(b, 'en'));
 
-  return {
+  const result = {
     summary: {
       totalBookFiles: inventory.totalBookFiles,
       validBookFiles: inventory.validBooks.length,
@@ -170,6 +177,25 @@ async function reconcileBiqugeImport(options = {}) {
     missingBooks,
     invalidBooks: inventory.invalidBooks,
     databaseOnlyBooks,
+  };
+
+  const reportPath = options.report
+    ? path.resolve(PROJECT_ROOT, options.report)
+    : buildDefaultTaskReportPath(root, 'biquge-import-reconcile');
+  await writeTaskReport(reportPath, {
+    task: 'biquge-import-reconcile',
+    status: 'success',
+    summary: result.summary,
+    items: [
+      ...result.missingBooks,
+      ...result.invalidBooks,
+      ...result.databaseOnlyBooks.map((bookId) => ({ bookId, type: 'database-only-book' })),
+    ],
+  });
+
+  return {
+    ...result,
+    reportPath,
   };
 }
 

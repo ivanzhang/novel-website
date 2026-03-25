@@ -2,6 +2,7 @@
 
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { buildDefaultTaskReportPath, writeTaskReport } = require('./task-report');
 
 const {
   buildChapterFilePath,
@@ -43,6 +44,7 @@ function parseArgs(argv = process.argv) {
   const args = argv.slice(2);
   const options = {
     root: DEFAULT_ROOT,
+    report: null,
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -51,6 +53,10 @@ function parseArgs(argv = process.argv) {
     switch (current) {
       case '--root':
         options.root = resolveRoot(args[index + 1] || DEFAULT_ROOT);
+        index += 1;
+        break;
+      case '--report':
+        options.report = path.resolve(PROJECT_ROOT, args[index + 1] || '');
         index += 1;
         break;
       case '--help':
@@ -70,10 +76,11 @@ function printHelp() {
 笔趣阁 JSON 批量导入工具
 
 用法:
-  node backend/import-biquge-json.js [--root ./storage/json/biquge]
+  node backend/import-biquge-json.js [--root ./storage/json/biquge] [--report ./storage/json/biquge/reports/import-jobs/import.json]
 
 选项:
   --root   扫描源目录，默认 ./storage/json/biquge
+  --report 输出任务报告 JSON
   --help   显示帮助
 `);
 }
@@ -85,6 +92,13 @@ async function readJsonFile(filePath) {
 
 function buildLocalCoverUrl(bookJson = {}) {
   const bookId = String(bookJson.bookId || '').trim();
+  const cdnUrl = bookJson && bookJson.cover && typeof bookJson.cover.cdnUrl === 'string'
+    ? bookJson.cover.cdnUrl.trim()
+    : '';
+
+  if (cdnUrl) {
+    return cdnUrl;
+  }
 
   if (!bookId) {
     return null;
@@ -222,16 +236,47 @@ async function importBiqugeJson(options = {}) {
     failed: 0,
     missingContentFiles: 0,
   };
+  const items = [];
 
   for (const bookFileName of bookFiles) {
     try {
       const result = await importOneBook(root, bookFileName);
       stats[result.status] += 1;
       stats.missingContentFiles += result.missingContentFiles;
+      items.push({
+        fileName: bookFileName,
+        novelId: result.novelId,
+        bookId: path.basename(bookFileName, '.json'),
+        status: result.status,
+        missingContentFiles: result.missingContentFiles,
+      });
     } catch (error) {
       stats.failed += 1;
       console.error(`导入失败: ${bookFileName} - ${error.message}`);
+      items.push({
+        fileName: bookFileName,
+        bookId: path.basename(bookFileName, '.json'),
+        status: 'failed',
+        error: error.message,
+      });
     }
+  }
+
+  const reportPath = options.report
+    ? path.resolve(PROJECT_ROOT, options.report)
+    : buildDefaultTaskReportPath(root, 'import-biquge-json');
+  await writeTaskReport(reportPath, {
+    task: 'import-biquge-json',
+    status: stats.failed > 0 ? 'partial' : 'success',
+    summary: stats,
+    items,
+  });
+
+  if (options.report) {
+    return {
+      ...stats,
+      reportPath,
+    };
   }
 
   return stats;
@@ -278,4 +323,5 @@ module.exports = {
   importOneBook,
   importBiqugeJson,
   printStats,
+  writeTaskReport,
 };

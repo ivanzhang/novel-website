@@ -132,8 +132,32 @@ test('parseArgs 应该支持 --root 和 --limit', () => {
     '/tmp/biquge',
     '--limit',
     '5',
+    '--report',
+    '/tmp/reconcile-report.json',
   ]);
 
   assert.equal(result.root, '/tmp/biquge');
   assert.equal(result.limit, 5);
+  assert.equal(result.report, '/tmp/reconcile-report.json');
+});
+
+test('reconcileBiqugeImport 应支持输出任务报告', async () => {
+  const db = createTestDb();
+  const root = await createTempRoot();
+  const reportPath = path.join(root, 'reports', 'import-jobs', 'reconcile.json');
+
+  try {
+    const { reconcileBiqugeImport } = loadReconciler();
+    const result = await reconcileBiqugeImport({ root, report: reportPath });
+    const report = JSON.parse(await fs.readFile(reportPath, 'utf8'));
+
+    assert.equal(result.reportPath, reportPath);
+    assert.equal(report.task, 'biquge-import-reconcile');
+    assert.equal(report.status, 'success');
+    assert.equal(report.summary.missingBooks, 2);
+    assert.ok(Array.isArray(report.items));
+  } finally {
+    db.close();
+    await fs.rm(root, { recursive: true, force: true });
+  }
 });

@@ -90,6 +90,84 @@ test('loadChapterContent 应该优先从 content_file_path 读取 JSON 正文', 
   }
 });
 
+test('loadChapterContent 应优先读取 content_cdn_url 对应的远程 JSON 正文', async () => {
+  const root = await createTempRoot();
+  const originalFetch = global.fetch;
+
+  try {
+    await fs.writeFile(
+      path.join(root, 'chapters', '2530', '1.json'),
+      JSON.stringify({
+        content: '本地正文',
+      }, null, 2)
+    );
+
+    global.fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        content: 'CDN 正文',
+      }),
+    });
+
+    const { loadChapterContent } = loadChapterContentModule();
+    const chapter = await loadChapterContent(
+      {
+        id: 20,
+        novel_id: 99,
+        chapter_number: 1,
+        title: '第1章',
+        content: '',
+        content_file_path: 'chapters/2530/1.json',
+        content_cdn_url: 'https://aixs.us.ci/file/chapter-2530-1.json',
+      },
+      root
+    );
+
+    assert.equal(chapter.content, 'CDN 正文');
+  } finally {
+    global.fetch = originalFetch;
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('loadChapterContent 在 CDN 读取失败时应回退本地正文文件', async () => {
+  const root = await createTempRoot();
+  const originalFetch = global.fetch;
+
+  try {
+    await fs.writeFile(
+      path.join(root, 'chapters', '2530', '1.json'),
+      JSON.stringify({
+        content: '本地回退正文',
+      }, null, 2)
+    );
+
+    global.fetch = async () => {
+      throw new Error('fetch failed');
+    };
+
+    const { loadChapterContent } = loadChapterContentModule();
+    const chapter = await loadChapterContent(
+      {
+        id: 21,
+        novel_id: 99,
+        chapter_number: 1,
+        title: '第1章',
+        content: '',
+        content_file_path: 'chapters/2530/1.json',
+        content_cdn_url: 'https://aixs.us.ci/file/chapter-2530-1.json',
+      },
+      root
+    );
+
+    assert.equal(chapter.content, '本地回退正文');
+  } finally {
+    global.fetch = originalFetch;
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
 test('loadChapterContent 应在返回前清洗正文中的域名广告', async () => {
   const root = await createTempRoot();
 

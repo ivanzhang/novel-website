@@ -195,6 +195,7 @@ test('db 初始化应创建 JSON 导入元数据列和索引', () => {
       'created_at',
       'source_chapter_id',
       'content_file_path',
+      'content_cdn_url',
       'content_preview',
     ]);
 
@@ -241,6 +242,7 @@ test('db 初始化应自动升级旧版 novels 和 chapters 表', () => {
         'created_at',
         'source_chapter_id',
         'content_file_path',
+        'content_cdn_url',
         'content_preview',
       ]);
     } finally {
@@ -289,6 +291,7 @@ test('db 初始化可对同一数据库文件重复执行', () => {
       'created_at',
       'source_chapter_id',
       'content_file_path',
+      'content_cdn_url',
       'content_preview',
     ]);
   } finally {
