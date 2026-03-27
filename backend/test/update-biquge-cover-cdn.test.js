@@ -1,13 +1,22 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fsSync = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { DatabaseSync } = require('node:sqlite');
 const { createTestDb } = require('./helpers/test-db');
+
+function loadUpdateScript() {
+  const modulePath = path.resolve(__dirname, '../update-biquge-cover-cdn.js');
+  delete require.cache[modulePath];
+  return require('../update-biquge-cover-cdn');
+}
 
 const {
   applyCoverCdn,
   buildBookCoverMap,
   pickBookFilesToUpdate,
-  updateNovelCoverUrlsWithMap,
-} = require('../update-biquge-cover-cdn');
+} = loadUpdateScript();
 
 test('applyCoverCdn 只补充 cover.cdnUrl 并保留原字段', () => {
   const original = {
@@ -52,6 +61,8 @@ test('updateNovelCoverUrlsWithMap 应把数据库中的本地封面路径替换�
   const db = createTestDb();
 
   try {
+    const { updateNovelCoverUrlsWithMap } = loadUpdateScript();
+
     db.prepare(`
       INSERT INTO novels (
         title, author, content, is_premium, chapter_count, description, free_chapters,
@@ -91,6 +102,52 @@ test('updateNovelCoverUrlsWithMap 应把数据库中的本地封面路径替换�
       { source_book_id: '999', cover_url: '/covers/999.jpg' },
     ]);
   } finally {
+    db.close();
+  }
+});
+
+test('checkpointDatabaseForExternalReaders 应把 WAL 中的 cover_url 刷回主库文件', () => {
+  const db = createTestDb();
+  const snapshotDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'update-biquge-cover-cdn-snapshot-'));
+
+  try {
+    const { updateNovelCoverUrlsWithMap, checkpointDatabaseForExternalReaders } = loadUpdateScript();
+
+    // 先把 schema 刷回主库，避免“外部读取方”看不到最新表结构。
+    db.pragma('wal_checkpoint(TRUNCATE)');
+
+    db.prepare(`
+      INSERT INTO novels (
+        id, title, author, content, is_premium, chapter_count, description, free_chapters,
+        source_site, source_book_id, source_category, primary_category, cover_url, content_storage
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(1, '书A', '作者A', '', 0, 1, '', 0, 'biquge', '557', '玄幻', '玄幻', '/covers/557.jpg', 'json');
+
+    db.pragma('wal_checkpoint(TRUNCATE)');
+
+    updateNovelCoverUrlsWithMap({
+      '557': 'https://aixs.us.ci/file/557.jpg',
+    });
+
+    const beforeCheckpointPath = path.join(snapshotDir, 'before-checkpoint.db');
+    fsSync.copyFileSync(db.__path, beforeCheckpointPath);
+    const detachedBefore = new DatabaseSync(beforeCheckpointPath);
+    const beforeRow = detachedBefore.prepare('SELECT cover_url FROM novels WHERE source_book_id = ?').get('557');
+    detachedBefore.close();
+
+    assert.equal(beforeRow.cover_url, '/covers/557.jpg');
+
+    checkpointDatabaseForExternalReaders();
+
+    const afterCheckpointPath = path.join(snapshotDir, 'after-checkpoint.db');
+    fsSync.copyFileSync(db.__path, afterCheckpointPath);
+    const detachedAfter = new DatabaseSync(afterCheckpointPath);
+    const afterRow = detachedAfter.prepare('SELECT cover_url FROM novels WHERE source_book_id = ?').get('557');
+    detachedAfter.close();
+
+    assert.equal(afterRow.cover_url, 'https://aixs.us.ci/file/557.jpg');
+  } finally {
+    fsSync.rmSync(snapshotDir, { recursive: true, force: true });
     db.close();
   }
 });

@@ -124,6 +124,13 @@ function updateNovelCoverUrlsWithMap(coverMap = {}) {
   return stats;
 }
 
+function checkpointDatabaseForExternalReaders() {
+  const db = getDb();
+
+  // 生产环境里容器通过单文件挂载读取 DB，先 checkpoint 才能立刻看到主机侧写入结果。
+  db.pragma('wal_checkpoint(TRUNCATE)');
+}
+
 async function updateBooksWithCoverCdn(options = {}) {
   const root = resolveProjectPath(options.root || 'storage/json/biquge');
   const mapFile = resolveProjectPath(options.mapFile || 'storage/json/biquge/cover-cdn-map.json');
@@ -169,6 +176,7 @@ async function main() {
     const rawMap = JSON.parse(await fsp.readFile(mapFile, 'utf8'));
     const coverMap = buildBookCoverMap(rawMap);
     dbStats = updateNovelCoverUrlsWithMap(coverMap);
+    checkpointDatabaseForExternalReaders();
   }
 
   console.log('封面 CDN 回写完成');
@@ -203,6 +211,7 @@ module.exports = {
   parseArgs,
   updateBooksWithCoverCdn,
   updateNovelCoverUrlsWithMap,
+  checkpointDatabaseForExternalReaders,
 };
 
 /*
