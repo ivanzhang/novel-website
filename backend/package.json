@@ -15,7 +15,8 @@
     "annotate:storage-batch": "node annotate-storage-batch.js",
     "export:biquge-batch": "node biquge-batch-export.js",
     "upload:telegraph-batch": "node upload-telegraph-batch.js",
-    "update:biquge-cover-cdn": "node update-biquge-cover-cdn.js"
+    "update:biquge-cover-cdn": "node update-biquge-cover-cdn.js",
+    "upload:biquge-chapter-cdn": "node upload-biquge-chapter-cdn.js"
   },
   "dependencies": {
     "express": "^4.18.2",

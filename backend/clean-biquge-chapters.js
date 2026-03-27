@@ -4,6 +4,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 
 const { sanitizeChapterContent } = require('./chapter-cleaner');
+const { writeTaskReport } = require('./task-report');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const DEFAULT_ROOT = path.join(PROJECT_ROOT, 'storage/json/biquge');
@@ -207,8 +208,7 @@ async function processChapterFile(entry, options) {
 }
 
 async function writeReport(reportPath, result) {
-  await fs.mkdir(path.dirname(reportPath), { recursive: true });
-  await fs.writeFile(reportPath, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
+  await writeTaskReport(reportPath, result);
 }
 
 async function cleanBiqugeChapters(options = {}) {
@@ -271,9 +271,12 @@ async function cleanBiqugeChapters(options = {}) {
   }
 
   const report = {
+    task: 'clean-biquge-chapters',
+    status: summary.failed > 0 ? 'partial' : 'success',
     root,
     mode: options.write ? 'write' : 'dry-run',
     summary,
+    items: changes,
     changes,
     failures,
   };

@@ -145,6 +145,7 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     source_chapter_id TEXT,
     content_file_path TEXT,
+    content_cdn_url TEXT,
     content_preview TEXT,
     FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
     UNIQUE(novel_id, chapter_number)
@@ -272,6 +273,7 @@ ensureColumn('novels', 'cover_url', 'cover_url TEXT');
 ensureColumn('novels', 'content_storage', 'content_storage TEXT');
 ensureColumn('chapters', 'source_chapter_id', 'source_chapter_id TEXT');
 ensureColumn('chapters', 'content_file_path', 'content_file_path TEXT');
+ensureColumn('chapters', 'content_cdn_url', 'content_cdn_url TEXT');
 ensureColumn('chapters', 'content_preview', 'content_preview TEXT');
 
 // 创建索引

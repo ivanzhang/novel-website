@@ -174,3 +174,28 @@ test('cleanBiqugeChapters --write 应改写命中文件', async () => {
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+test('cleanBiqugeChapters 应写出统一任务报告字段', async () => {
+  const root = await createTempRoot();
+
+  try {
+    const { cleanBiqugeChapters } = loadCleanerScript();
+    const reportPath = path.join(root, 'reports', 'chapter-clean', 'clean.json');
+    const result = await cleanBiqugeChapters({
+      root,
+      write: true,
+      report: reportPath,
+    });
+
+    const report = JSON.parse(await fs.readFile(reportPath, 'utf8'));
+
+    assert.equal(result.reportPath, reportPath);
+    assert.equal(report.task, 'clean-biquge-chapters');
+    assert.equal(report.status, 'success');
+    assert.equal(report.mode, 'write');
+    assert.ok(Array.isArray(report.items));
+    assert.equal(report.items.length, 2);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});

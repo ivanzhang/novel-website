@@ -104,6 +104,9 @@ function createTestDb() {
 
     const close = db.close.bind(db);
 
+    db.__path = dbPath;
+    db.__tempDir = tempDir;
+
     db.close = () => {
       close();
       fs.rmSync(tempDir, { recursive: true, force: true });

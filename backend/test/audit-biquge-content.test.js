@@ -74,3 +74,23 @@ test('auditContent 默认检测并生成报告', async () => {
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+test('auditContent 应写出统一任务报告字段', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'audit-biquge-'));
+  await createChapters(root);
+
+  try {
+    const { auditContent } = loadAuditScript();
+    const reportPath = path.join(root, 'reports', 'content-audit', 'audit.json');
+    const result = await auditContent({ root, report: reportPath });
+    const report = JSON.parse(await fs.readFile(reportPath, 'utf8'));
+
+    assert.equal(result.report, reportPath);
+    assert.equal(report.task, 'audit-biquge-content');
+    assert.equal(report.status, 'success');
+    assert.ok(Array.isArray(report.items));
+    assert.equal(report.items.length, report.issues.length);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});

@@ -4,6 +4,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 
 const { sanitizeChapterContent } = require('./chapter-cleaner');
+const { writeTaskReport } = require('./task-report');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const DEFAULT_ROOT = path.join(PROJECT_ROOT, 'storage/json/biquge');
@@ -162,15 +163,18 @@ async function auditContent(options = {}) {
   }
 
   const finalReport = {
+    task: 'audit-biquge-content',
+    status: 'success',
     root,
     bookFilter: options.book,
     checks: Array.from(checks),
     summary,
+    items: issues,
     issues,
+    report: options.report,
   };
 
-  await fs.mkdir(path.dirname(options.report), { recursive: true });
-  await fs.writeFile(options.report, `${JSON.stringify(finalReport, null, 2)}\n`, 'utf8');
+  await writeTaskReport(options.report, finalReport);
 
   return finalReport;
 }
