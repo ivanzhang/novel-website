@@ -5,14 +5,20 @@
 ### 1. 启动后端（如果还未启动）
 ```bash
 cd /private/var/code/claude/novel-website/backend
+cp .env.example .env
 npm start
 ```
+
+后端 API 固定使用 `http://localhost:8081`
 
 ### 2. 启动前端（如果还未启动）
 ```bash
 cd /private/var/code/claude/novel-website/frontend
 python3 -m http.server 8080
 ```
+
+前端本地测试固定使用 `http://localhost:8080`，不要用 `3000` 作为页面入口。
+`3000` 端口完全让给其它本地项目。
 
 ## 演示流程
 

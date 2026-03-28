@@ -602,8 +602,9 @@
     </div>
   </aside>
 
+  <script src="runtime-config.js"></script>
   <script>
-    const API_URL = '/api';
+    const API_URL = window.NOVEL_APP_CONFIG.apiUrl;
     const adminDetailStore = [];
 
     function escapeHtml(str) {

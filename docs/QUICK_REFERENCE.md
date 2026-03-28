@@ -111,6 +111,7 @@
 ```bash
 cd backend
 npm install
+cp .env.example .env
 npm start
 ```
 
@@ -122,7 +123,10 @@ python3 -m http.server 8080
 
 ### 3. 访问
 - 前端：http://localhost:8080
-- 后端：http://localhost:3000
+- 后端：http://localhost:8081
+- 约定：本地只用 `8080` 测前端，不用 `3000` 打开页面
+- 前端会自动请求 `http://localhost:8081/api`
+- `3000` 端口保留给其它本地项目
 
 ### 4. 测试账号
 - 用户名：testuser

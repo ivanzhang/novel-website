@@ -18,12 +18,12 @@ Chinese novel reading website (中文小说阅读网) — a full-stack web app w
 
 ```bash
 # Install backend dependencies
-cd backend && npm install
+cd backend && npm install && cp .env.example .env
 
-# Start backend server (port 3000)
+# Start backend API server (port 8081)
 cd backend && npm start
 
-# Serve frontend (port 8080)
+# Serve frontend for local UI testing (fixed port 8080)
 cd frontend && python3 -m http.server 8080
 
 # Run API tests
@@ -34,9 +34,9 @@ chmod +x test-api.sh && ./test-api.sh
 
 ## Architecture
 
-**Backend:** Node.js + Express + better-sqlite3 (SQLite). Single-file API server (`server.js`) with JWT auth middleware (`auth.js`) and database init/migration (`db.js`).
+**Backend:** Node.js + Express + better-sqlite3 (SQLite). Single-file API server (`server.js`) with JWT auth middleware (`auth.js`) and database init/migration (`db.js`). Local startup reads `backend/.env` automatically.
 
-**Frontend:** Vanilla HTML/CSS/JS — no build step, no framework. 6 HTML pages served as static files. All API calls go to `http://localhost:3000/api`.
+**Frontend:** Vanilla HTML/CSS/JS — no build step, no framework. Local frontend testing is fixed at `http://localhost:8080`; the runtime config automatically points local page requests to `http://localhost:8081/api`. Production same-origin deployment continues to use `/api`.
 
 **Auth flow:** Login → JWT token stored in `localStorage` → sent as `Authorization: Bearer <token>` header on authenticated requests.
 

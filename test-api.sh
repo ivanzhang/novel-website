@@ -2,7 +2,7 @@
 
 # 测试脚本：验证章节管理和阅读进度功能
 
-API_URL="http://localhost:3000/api"
+API_URL="http://localhost:8081/api"
 
 echo "=== 测试章节管理和阅读进度功能 ==="
 echo ""

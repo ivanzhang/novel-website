@@ -7,6 +7,6 @@ WORKDIR /app/backend
 COPY backend/package*.json ./
 RUN npm install --production
 
-EXPOSE 3000
+EXPOSE 8081
 
 CMD ["node", "server.js"]

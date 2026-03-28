@@ -88,13 +88,14 @@
         <button class="close-settings" onclick="toggleCommentPanel()">关闭</button>
     </div>
 
+    <script src="runtime-config.js"></script>
     <script>
         function escapeHtml(str) {
             if (!str) return '';
             return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
         }
 
-        const API_URL = '/api';
+        const API_URL = window.NOVEL_APP_CONFIG.apiUrl;
         const token = localStorage.getItem('token');
         const urlParams = new URLSearchParams(window.location.search);
         const novelId = urlParams.get('novelId');

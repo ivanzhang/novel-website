@@ -4,7 +4,7 @@
   "description": "中文小说阅读网站后端",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "\"$npm_node_execpath\" server.js",
     "import:biquge-json": "node import-biquge-json.js",
     "clean:biquge-chapters": "node clean-biquge-chapters.js",
     "audit:biquge-content": "node audit-biquge-content.js",

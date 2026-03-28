@@ -47,7 +47,12 @@
 ```bash
 cd backend
 npm install
+cp .env.example .env
 ```
+
+说明：
+- `backend/.env.example` 提供了本地开发示例配置
+- 默认本地开发会从 `backend/.env` 读取 `JWT_SECRET` 和 `PORT`
 
 ### 2. 启动后端服务器
 
@@ -55,11 +60,11 @@ npm install
 npm start
 ```
 
-服务器将运行在 http://localhost:3000
+后端 API 将运行在 http://localhost:8081
 
 ### 3. 打开前端页面
 
-使用浏览器打开 `frontend/index.html` 或使用本地服务器：
+本地前端测试固定使用 `8080` 端口，不再使用 `3000` 作为前端访问入口：
 
 ```bash
 cd frontend
@@ -67,6 +72,13 @@ python3 -m http.server 8080
 ```
 
 然后访问 http://localhost:8080
+
+说明：
+- 前端测试入口固定为 `http://localhost:8080`
+- 后端 API 固定为 `http://localhost:8081`
+- 前端页面会自动把本地 `8080` 测试流量转到 `http://localhost:8081/api`
+- `3000` 端口完全让出，可留给本机其它项目使用
+- 生产同源部署时仍然继续使用 `/api`
 
 ## 使用说明
 
