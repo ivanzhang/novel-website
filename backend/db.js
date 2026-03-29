@@ -234,6 +234,22 @@ ensureColumn('novels', 'primary_category', 'primary_category TEXT');
 ensureColumn('novels', 'cover_url', 'cover_url TEXT');
 ensureColumn('novels', 'storage_type', "storage_type TEXT DEFAULT 'local'");
 
+ensureColumn('chapters', 'novel_id', 'novel_id INTEGER DEFAULT 0');
+ensureColumn('chapters', 'is_premium', 'is_premium INTEGER DEFAULT 0');
+ensureColumn('chapters', 'word_count', 'word_count INTEGER DEFAULT 0');
+ensureColumn('chapters', 'source_chapter_id', 'source_chapter_id TEXT');
+ensureColumn('chapters', 'content_file_path', 'content_file_path TEXT');
+ensureColumn('chapters', 'content_cdn_url', 'content_cdn_url TEXT');
+ensureColumn('chapters', 'content_preview', 'content_preview TEXT');
+
+ensureColumn('reading_progress', 'novel_id', 'novel_id INTEGER');
+ensureColumn('reading_progress', 'novel_title', 'novel_title TEXT');
+ensureColumn('reading_progress', 'chapter_title', 'chapter_title TEXT');
+ensureColumn('reading_progress', 'author', 'author TEXT');
+
+ensureColumn('bookmarks', 'novel_title', 'novel_title TEXT');
+ensureColumn('bookmarks', 'chapter_title', 'chapter_title TEXT');
+
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_chapters_novel_id ON chapters(novel_id);
   CREATE INDEX IF NOT EXISTS idx_chapters_novel_chapter ON chapters(novel_id, chapter_number);
