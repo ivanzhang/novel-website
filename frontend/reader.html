@@ -551,7 +551,8 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        chapter_id: currentChapterId,
+                        novel_id: parseInt(novelId),
+                        chapter_number: currentChapter,
                         content: content
                     })
                 });
@@ -569,7 +570,7 @@
 
         async function loadComments() {
             try {
-                const response = await fetch(`${API_URL}/comments/${currentChapterId}`);
+                const response = await fetch(`${API_URL}/comments?novel_id=${novelId}&chapter_number=${currentChapter}`);
                 const comments = await response.json();
                 const listDiv = document.getElementById('commentList');
 

@@ -39,36 +39,39 @@ function buildMembershipBenefits() {
   ];
 }
 
-// 获取用户对指定小说的阅读进度
 router.get('/reading-progress/:novelId', authenticateToken, (req, res) => {
   const progress = db.prepare(`
-    SELECT rp.*, c.chapter_number, c.title as chapter_title
+    SELECT rp.*, rp.chapter_number, rp.chapter_title
     FROM reading_progress rp
-    JOIN chapters c ON rp.chapter_id = c.id
     WHERE rp.user_id = ? AND rp.novel_id = ?
   `).get(req.user.id, req.params.novelId);
 
   res.json(progress || null);
 });
 
-// 保存/更新阅读进度
 router.post('/reading-progress', authenticateToken, (req, res) => {
-  const { novel_id, chapter_id, scroll_position, reading_time } = req.body;
+  const { novel_id, chapter_number, chapter_id, scroll_position, reading_time, novel_title, chapter_title, author } = req.body;
 
   try {
     const stmt = db.prepare(`
-      INSERT INTO reading_progress (user_id, novel_id, chapter_id, scroll_position, reading_time, last_read_at)
-      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO reading_progress (user_id, novel_id, chapter_number, scroll_position, reading_time, last_read_at, novel_title, chapter_title, author)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)
       ON CONFLICT(user_id, novel_id)
       DO UPDATE SET
-        chapter_id = ?,
+        chapter_number = ?,
         scroll_position = ?,
         reading_time = reading_time + ?,
-        last_read_at = CURRENT_TIMESTAMP
+        last_read_at = CURRENT_TIMESTAMP,
+        novel_title = ?,
+        chapter_title = ?,
+        author = ?
     `);
+    const chNum = chapter_number ?? chapter_id;
     stmt.run(
-      req.user.id, novel_id, chapter_id, scroll_position, reading_time || 0,
-      chapter_id, scroll_position, reading_time || 0
+      req.user.id, novel_id, chNum, scroll_position, reading_time || 0,
+      novel_title || null, chapter_title || null, author || null,
+      chNum, scroll_position, reading_time || 0,
+      novel_title || null, chapter_title || null, author || null
     );
     res.json({ message: '进度已保存' });
   } catch (error) {
@@ -76,19 +79,21 @@ router.post('/reading-progress', authenticateToken, (req, res) => {
   }
 });
 
-// 获取用户所有阅读进度（用于"继续阅读"）
 router.get('/reading-progress', authenticateToken, (req, res) => {
   const progressList = db.prepare(`
-    SELECT rp.*, n.title as novel_title, n.author, n.chapter_count, c.chapter_number, c.title as chapter_title
+    SELECT rp.*, n.title as novel_title, n.author as novel_author, n.chapter_count, n.cover_url
     FROM reading_progress rp
-    JOIN novels n ON rp.novel_id = n.id
-    JOIN chapters c ON rp.chapter_id = c.id
+    LEFT JOIN novels n ON rp.novel_id = n.id
     WHERE rp.user_id = ?
     ORDER BY rp.last_read_at DESC
     LIMIT 20
   `).all(req.user.id);
 
-  res.json(progressList);
+  res.json(progressList.map(p => ({
+    ...p,
+    author: p.author || p.novel_author,
+    novel_title: p.novel_title || p.title
+  })));
 });
 
 // 获取用户总阅读时长
@@ -118,16 +123,14 @@ router.get('/member-center', authenticateToken, (req, res) => {
   const recentReads = db.prepare(`
     SELECT
       rp.novel_id,
-      rp.chapter_id,
+      rp.chapter_number,
       rp.last_read_at,
-      n.title as novel_title,
-      n.author,
+      rp.novel_title,
+      rp.author,
       n.cover_url,
-      c.chapter_number,
-      c.title as chapter_title
+      rp.chapter_title
     FROM reading_progress rp
-    JOIN novels n ON rp.novel_id = n.id
-    JOIN chapters c ON rp.chapter_id = c.id
+    LEFT JOIN novels n ON rp.novel_id = n.id
     WHERE rp.user_id = ?
     ORDER BY rp.last_read_at DESC
     LIMIT 5
@@ -145,18 +148,16 @@ router.get('/member-center', authenticateToken, (req, res) => {
   });
 });
 
-// ========== 书签功能 ==========
-
 router.post('/bookmarks', authenticateToken, (req, res) => {
-  const { novel_id, chapter_id, chapter_number, note } = req.body;
+  const { novel_id, chapter_number, novel_title, chapter_title, note } = req.body;
 
   if (note && note.length > 200) {
     return res.status(400).json({ error: '书签备注不能超过200字符' });
   }
 
   try {
-    const stmt = db.prepare('INSERT INTO bookmarks (user_id, novel_id, chapter_id, chapter_number, note) VALUES (?, ?, ?, ?, ?)');
-    const result = stmt.run(req.user.id, novel_id, chapter_id, chapter_number, note || '');
+    const stmt = db.prepare('INSERT INTO bookmarks (user_id, novel_id, chapter_number, novel_title, chapter_title, note) VALUES (?, ?, ?, ?, ?, ?)');
+    const result = stmt.run(req.user.id, novel_id, chapter_number, novel_title || null, chapter_title || null, note || '');
     res.json({ message: '书签已添加', bookmarkId: result.lastInsertRowid });
   } catch (error) {
     res.status(500).json({ error: '添加书签失败' });
@@ -167,10 +168,9 @@ router.get('/bookmarks', authenticateToken, (req, res) => {
   const { novel_id } = req.query;
 
   let query = `
-    SELECT b.*, n.title as novel_title, c.title as chapter_title
+    SELECT b.*, n.title as novel_title, n.cover_url
     FROM bookmarks b
-    JOIN novels n ON b.novel_id = n.id
-    JOIN chapters c ON b.chapter_id = c.id
+    LEFT JOIN novels n ON b.novel_id = n.id
     WHERE b.user_id = ?
   `;
   const params = [req.user.id];
@@ -199,10 +199,8 @@ router.delete('/bookmarks/:id', authenticateToken, (req, res) => {
   }
 });
 
-// ========== 评论功能 ==========
-
 router.post('/comments', authenticateToken, (req, res) => {
-  const { chapter_id, content } = req.body;
+  const { novel_id, chapter_number, content } = req.body;
 
   if (!content || content.trim().length === 0) {
     return res.status(400).json({ error: '评论内容不能为空' });
@@ -213,22 +211,29 @@ router.post('/comments', authenticateToken, (req, res) => {
   }
 
   try {
-    const stmt = db.prepare('INSERT INTO comments (user_id, chapter_id, content) VALUES (?, ?, ?)');
-    const result = stmt.run(req.user.id, chapter_id, content.trim());
+    const stmt = db.prepare('INSERT INTO comments (user_id, novel_id, chapter_number, content) VALUES (?, ?, ?, ?)');
+    const result = stmt.run(req.user.id, novel_id, chapter_number, content.trim());
     res.json({ message: '评论已发表', commentId: result.lastInsertRowid });
   } catch (error) {
     res.status(500).json({ error: '发表评论失败' });
   }
 });
 
-router.get('/comments/:chapterId', (req, res) => {
+router.get('/comments', (req, res) => {
+  const { novel_id, chapter_number } = req.query;
+  
+  if (!novel_id) {
+    return res.status(400).json({ error: '需要提供 novel_id' });
+  }
+
   const comments = db.prepare(`
     SELECT c.*, u.username
     FROM comments c
     JOIN users u ON c.user_id = u.id
-    WHERE c.chapter_id = ?
+    WHERE c.novel_id = ?
+    ${chapter_number ? 'AND c.chapter_number = ?' : ''}
     ORDER BY c.created_at DESC
-  `).all(req.params.chapterId);
+  `).all(...(chapter_number ? [novel_id, chapter_number] : [novel_id]));
 
   res.json(comments);
 });

@@ -105,7 +105,6 @@ function ensureColumn(tableName, columnName, columnDefinition) {
   }
 }
 
-// 初始化数据库表
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,21 +116,19 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS novels (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     title TEXT NOT NULL,
-    author TEXT NOT NULL,
-    content TEXT,
+    author TEXT,
     is_premium INTEGER DEFAULT 0,
     chapter_count INTEGER DEFAULT 0,
     description TEXT,
     free_chapters INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     source_site TEXT,
-    source_book_id TEXT,
     source_category TEXT,
     primary_category TEXT,
     cover_url TEXT,
-    content_storage TEXT
+    storage_type TEXT DEFAULT 'local'
   );
 
   CREATE TABLE IF NOT EXISTS chapters (
@@ -155,13 +152,15 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     novel_id INTEGER NOT NULL,
-    chapter_id INTEGER NOT NULL,
+    chapter_number INTEGER NOT NULL,
     scroll_position INTEGER DEFAULT 0,
     reading_time INTEGER DEFAULT 0,
     last_read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    novel_title TEXT,
+    chapter_title TEXT,
+    author TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
-    FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE,
     UNIQUE(user_id, novel_id)
   );
 
@@ -178,23 +177,25 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     novel_id INTEGER NOT NULL,
-    chapter_id INTEGER NOT NULL,
     chapter_number INTEGER NOT NULL,
+    novel_title TEXT,
+    chapter_title TEXT,
     note TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
-    FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE
+    UNIQUE(user_id, novel_id, chapter_number)
   );
 
   CREATE TABLE IF NOT EXISTS comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    chapter_id INTEGER NOT NULL,
+    novel_id INTEGER NOT NULL,
+    chapter_number INTEGER NOT NULL,
     content TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE
+    FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS ratings (
@@ -219,81 +220,41 @@ db.exec(`
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
-  CREATE TABLE IF NOT EXISTS source_records (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    source_key TEXT NOT NULL,
-    source_type TEXT NOT NULL DEFAULT 'novel',
-    raw_data TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS import_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    job_id INTEGER NOT NULL,
-    source_record_id INTEGER NOT NULL,
-    item_type TEXT NOT NULL DEFAULT 'novel',
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (job_id) REFERENCES import_jobs(id) ON DELETE CASCADE,
-    FOREIGN KEY (source_record_id) REFERENCES source_records(id) ON DELETE CASCADE,
-    UNIQUE(job_id, source_record_id)
-  );
-
   CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     slug TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
-
-  CREATE TABLE IF NOT EXISTS tags (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    slug TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS novel_aliases (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    novel_id INTEGER NOT NULL,
-    alias TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
-    UNIQUE(novel_id, alias)
-  );
 `);
 
 ensureColumn('novels', 'source_site', 'source_site TEXT');
-ensureColumn('novels', 'source_book_id', 'source_book_id TEXT');
 ensureColumn('novels', 'source_category', 'source_category TEXT');
 ensureColumn('novels', 'primary_category', 'primary_category TEXT');
 ensureColumn('novels', 'cover_url', 'cover_url TEXT');
-ensureColumn('novels', 'content_storage', 'content_storage TEXT');
-ensureColumn('chapters', 'source_chapter_id', 'source_chapter_id TEXT');
-ensureColumn('chapters', 'content_file_path', 'content_file_path TEXT');
-ensureColumn('chapters', 'content_cdn_url', 'content_cdn_url TEXT');
-ensureColumn('chapters', 'content_preview', 'content_preview TEXT');
+ensureColumn('novels', 'storage_type', "storage_type TEXT DEFAULT 'local'");
 
-// 创建索引
 db.exec(`
-  DROP INDEX IF EXISTS idx_source_records_source_key;
   CREATE INDEX IF NOT EXISTS idx_chapters_novel_id ON chapters(novel_id);
   CREATE INDEX IF NOT EXISTS idx_chapters_novel_chapter ON chapters(novel_id, chapter_number);
-  DROP INDEX IF EXISTS idx_chapters_content_file_path;
   CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-  CREATE INDEX IF NOT EXISTS idx_progress_user_novel ON reading_progress(user_id, novel_id);
-  CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks(user_id);
-  CREATE INDEX IF NOT EXISTS idx_comments_chapter ON comments(chapter_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_progress_user_novel ON reading_progress(user_id, novel_id);
+  CREATE INDEX IF NOT EXISTS idx_bookmarks_user_novel ON bookmarks(user_id, novel_id);
+  CREATE INDEX IF NOT EXISTS idx_comments_novel_chapter ON comments(novel_id, chapter_number);
   CREATE INDEX IF NOT EXISTS idx_ratings_novel ON ratings(novel_id);
-  CREATE INDEX IF NOT EXISTS idx_import_items_job_id ON import_items(job_id);
-  CREATE INDEX IF NOT EXISTS idx_import_items_source_record_id ON import_items(source_record_id);
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_source_records_source_type_source_key ON source_records(source_type, source_key);
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_novels_source_site_source_book_id ON novels(source_site, source_book_id);
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
-  CREATE INDEX IF NOT EXISTS idx_novel_aliases_novel_id ON novel_aliases(novel_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_novels_title ON novels(title);
 `);
+
+db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS novels_fts USING fts5(id UNINDEXED, title, author)`);
+
+try {
+  db.exec(`CREATE TRIGGER IF NOT EXISTS novels_fts_insert AFTER INSERT ON novels BEGIN INSERT INTO novels_fts(id, title, author) VALUES (new.id, new.title, new.author); END`);
+} catch (e) {}
+try {
+  db.exec(`CREATE TRIGGER IF NOT EXISTS novels_fts_delete AFTER DELETE ON novels BEGIN DELETE FROM novels_fts WHERE id = old.id; END`);
+} catch (e) {}
+try {
+  db.exec(`CREATE TRIGGER IF NOT EXISTS novels_fts_update AFTER UPDATE ON novels BEGIN UPDATE novels_fts SET title = new.title, author = new.author WHERE id = new.id; END`);
+} catch (e) {}
 
 module.exports = db;
