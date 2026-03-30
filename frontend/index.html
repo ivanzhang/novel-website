@@ -147,24 +147,28 @@
       location.reload();
     });
 
-    // 搜索功能
-    let searchTimeout;
+    // 搜索功能：只在回车或点击搜索按钮时触发
     function handleSearch(event) {
       if (event.key === 'Enter') {
         performSearch();
-        return;
       }
-
-      clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => {
-        const query = document.getElementById('searchInput').value.trim();
-        if (query.length >= 2) {
-          performSearch();
-        } else if (query.length === 0) {
-          clearSearch();
-        }
-      }, 500);
     }
+
+    // 搜索框聚焦时，手机端隐藏分类导航
+    document.getElementById('searchInput').addEventListener('focus', () => {
+      if (isMobileLayout()) {
+        document.getElementById('categorySidebar').style.display = 'none';
+      }
+    });
+
+    document.getElementById('searchInput').addEventListener('blur', () => {
+      if (isMobileLayout()) {
+        // 短暂延迟，避免点击分类时导航还没恢复
+        setTimeout(() => {
+          document.getElementById('categorySidebar').style.display = '';
+        }, 200);
+      }
+    });
 
     // CSS 封面渐变色
     const coverGradients = [

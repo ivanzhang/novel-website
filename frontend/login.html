@@ -20,14 +20,23 @@
   <div class="form-container">
     <h2>用户登录</h2>
     <form id="loginForm">
-      <div class="form-group">
+      <div class="form-group" id="usernameGroup">
         <label>用户名</label>
-        <input type="text" id="username" required>
+        <input type="text" id="username">
       </div>
-      <div class="form-group">
+      <div class="form-group" id="loginPasswordGroup">
         <label>密码</label>
-        <input type="password" id="password" required>
+        <input type="password" id="password">
       </div>
+      <div class="form-group" id="regPasswordGroup" style="display:none;">
+        <label>设置密码</label>
+        <input type="password" id="regPassword">
+      </div>
+      <div class="form-group" id="regPassword2Group" style="display:none;">
+        <label>确认密码</label>
+        <input type="password" id="regPassword2">
+      </div>
+      <p id="regHint" style="display:none; color:#5e6d79; font-size:13px; margin:0 0 12px;">注册后系统会自动分配一个用户名，记住它用于下次登录。</p>
       <button type="submit" class="btn">登录</button>
       <div id="message"></div>
     </form>
@@ -53,6 +62,27 @@
       document.querySelector('p').innerHTML = isLogin
         ? '还没有账号？<a href="#" onclick="toggleForm()">立即注册</a>'
         : '已有账号？<a href="#" onclick="toggleForm()">立即登录</a>';
+
+      const usernameGroup = document.getElementById('usernameGroup');
+      const loginPasswordGroup = document.getElementById('loginPasswordGroup');
+      const regPasswordGroup = document.getElementById('regPasswordGroup');
+      const regPassword2Group = document.getElementById('regPassword2Group');
+      const regHint = document.getElementById('regHint');
+
+      if (isLogin) {
+        usernameGroup.style.display = '';
+        loginPasswordGroup.style.display = '';
+        regPasswordGroup.style.display = 'none';
+        regPassword2Group.style.display = 'none';
+        regHint.style.display = 'none';
+      } else {
+        usernameGroup.style.display = 'none';
+        loginPasswordGroup.style.display = 'none';
+        regPasswordGroup.style.display = '';
+        regPassword2Group.style.display = '';
+        regHint.style.display = '';
+      }
+      document.getElementById('message').innerHTML = '';
     }
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -60,30 +90,51 @@
 
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
-      const endpoint = isLogin ? '/login' : '/register';
 
-      try {
-        const response = await fetch(`${API_URL}${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          if (isLogin) {
+      if (isLogin) {
+        try {
+          const response = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+          const data = await response.json();
+          if (response.ok) {
             localStorage.setItem('token', data.token);
             location.href = 'index.html';
           } else {
-            document.getElementById('message').innerHTML = '<p class="success">注册成功！请登录</p>';
-            setTimeout(() => toggleForm(), 1500);
+            document.getElementById('message').innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
           }
-        } else {
-          document.getElementById('message').innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
+        } catch (error) {
+          document.getElementById('message').innerHTML = '<p class="error">网络错误，请稍后重试</p>';
         }
-      } catch (error) {
-        document.getElementById('message').innerHTML = '<p class="error">网络错误，请稍后重试</p>';
+      } else {
+        // 注册：只需密码，用户名由系统自动生成
+        const regPassword = document.getElementById('regPassword').value;
+        const regPassword2 = document.getElementById('regPassword2').value;
+        if (regPassword !== regPassword2) {
+          document.getElementById('message').innerHTML = '<p class="error">两次密码不一致</p>';
+          return;
+        }
+        try {
+          const response = await fetch(`${API_URL}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: regPassword })
+          });
+          const data = await response.json();
+          if (response.ok) {
+            document.getElementById('message').innerHTML = `<p class="success">注册成功！你的用户名是：<strong>${escapeHtml(data.username)}</strong>，请记住它用于登录。</p>`;
+            setTimeout(() => {
+              document.getElementById('username').value = data.username;
+              toggleForm();
+            }, 2500);
+          } else {
+            document.getElementById('message').innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
+          }
+        } catch (error) {
+          document.getElementById('message').innerHTML = '<p class="error">网络错误，请稍后重试</p>';
+        }
       }
     });
   </script>

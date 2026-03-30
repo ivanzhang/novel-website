@@ -183,6 +183,15 @@
     }
 
     function renderMembershipConversionCard(novel, memberCenter, progress) {
+      // 已登录但阅读不足3本时，不显示付费引导卡片，避免过早给用户收费压力
+      if (token) {
+        const profile = memberCenter?.profile;
+        const activeMember = Boolean(profile?.days_remaining > 0 && profile?.is_member);
+        if (!activeMember && (window.__novelsRead || 0) < 3) {
+          return '';
+        }
+      }
+
       const state = buildMembershipConversionState(novel, memberCenter, progress);
 
       return `
@@ -426,7 +435,10 @@
             fetch(`${API_URL}/ratings/${novelId}/user`, {
               headers: { 'Authorization': `Bearer ${token}` }
             }),
-            loadMemberCenter()
+            loadMemberCenter(),
+            fetch(`${API_URL}/reading-stats`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
           );
         }
 
@@ -452,8 +464,11 @@
           progress = responses[5].ok ? await responses[5].json() : null;
           userRating = responses[6].ok ? await responses[6].json() : { rating: 0 };
           window.__memberCenter = responses[7] || null;
+          const statsData = responses[8]?.ok ? await responses[8].json() : null;
+          window.__novelsRead = statsData?.novels_read || 0;
         } else {
           window.__memberCenter = null;
+          window.__novelsRead = 0;
         }
 
         chapterListState.preview = previewPayload.preview || [];
