@@ -44,7 +44,12 @@
       <div id="continueReading"></div>
     </div>
     <div class="catalog-layout">
-      <aside class="category-sidebar" id="categorySidebar"></aside>
+      <aside class="category-sidebar" id="categorySidebar">
+        <button class="category-sidebar-toggle" id="categorySidebarToggle" aria-expanded="false" aria-label="切换分类">
+          <span>☰</span>
+          <span class="toggle-label" id="categoryToggleLabel">分类</span>
+        </button>
+      </aside>
       <section class="catalog-main">
         <section class="category-intro" id="categoryIntro"></section>
         <div class="catalog-header">
@@ -330,24 +335,46 @@
     function renderCategorySidebar(categories) {
       const sidebar = document.getElementById('categorySidebar');
       const allClass = currentCategory ? '' : 'active';
-      const currentCategoryMeta = categories.find((item) => item.category === currentCategory);
       const allCount = categories.reduce((sum, item) => sum + item.count, 0);
-      sidebar.innerHTML = `
-        <div class="category-sidebar-inner">
-          <h3>分类浏览</h3>
-          <p class="category-current-label">当前：${escapeHtml(currentCategory || '全部')}</p>
-          <button class="category-link ${allClass}" onclick="selectCategory('')">
-            <span>全部</span>
-            <span class="category-count">${allCount}</span>
+      const activeLabel = currentCategory || '全部';
+
+      // 保留 toggle 按钮，更新 label
+      const toggleLabel = document.getElementById('categoryToggleLabel');
+      if (toggleLabel) toggleLabel.textContent = activeLabel;
+
+      // 移除旧的 inner，重新插入
+      const oldInner = sidebar.querySelector('.category-sidebar-inner');
+      if (oldInner) oldInner.remove();
+
+      const inner = document.createElement('div');
+      inner.className = 'category-sidebar-inner';
+      inner.innerHTML = `
+        <button class="category-link ${allClass}" onclick="selectCategory('')">
+          <span>全部</span>
+          <span class="category-count">${allCount}</span>
+        </button>
+        ${categories.map(item => `
+          <button class="category-link ${currentCategory === item.category ? 'active' : ''}" onclick="selectCategory('${escapeHtml(item.category)}')">
+            <span>${escapeHtml(item.category)}</span>
+            <span class="category-count">${item.count}</span>
           </button>
-          ${categories.map(item => `
-            <button class="category-link ${currentCategory === item.category ? 'active' : ''}" onclick="selectCategory('${escapeHtml(item.category)}')">
-              <span>${escapeHtml(item.category)}</span>
-              <span class="category-count">${item.count}</span>
-            </button>
-          `).join('')}
-        </div>
+        `).join('')}
       `;
+      sidebar.appendChild(inner);
+    }
+
+    function toggleCategorySidebar() {
+      const sidebar = document.getElementById('categorySidebar');
+      const toggle = document.getElementById('categorySidebarToggle');
+      const isOpen = sidebar.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+
+    function closeCategorySidebar() {
+      const sidebar = document.getElementById('categorySidebar');
+      const toggle = document.getElementById('categorySidebarToggle');
+      sidebar.classList.remove('open');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
     }
 
     async function loadCategories() {
@@ -409,6 +436,7 @@
       if (isMobileLayout()) {
         setMobileExpandedState('searchShell', 'mobileSearchToggle', false);
         setMobileExpandedState('continueReadingShell', 'continueReadingToggle', false);
+        closeCategorySidebar();
       }
       if (currentQuery) {
         performSearch();
@@ -430,6 +458,16 @@
     document.getElementById('mobileSearchToggle').addEventListener('click', () => {
       const shell = document.getElementById('searchShell');
       setMobileExpandedState('searchShell', 'mobileSearchToggle', !shell.classList.contains('expanded'));
+    });
+
+    document.getElementById('categorySidebarToggle').addEventListener('click', toggleCategorySidebar);
+
+    // 点击外部关闭分类面板
+    document.addEventListener('click', (e) => {
+      const sidebar = document.getElementById('categorySidebar');
+      if (isMobileLayout() && sidebar.classList.contains('open') && !sidebar.contains(e.target)) {
+        closeCategorySidebar();
+      }
     });
 
     document.getElementById('continueReadingToggle').addEventListener('click', () => {
