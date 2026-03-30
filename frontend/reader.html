@@ -241,15 +241,12 @@
             <h2>${escapeHtml(chapter.title)}</h2>
             <p class="chapter-meta">第${chapter.chapter_number}章 | ${chapter.word_count}字</p>
             <div class="chapter-text">${escapeHtml(chapter.content).replace(/\n/g,'<br>')}</div>
-            <div class="reader-exit-panel">
-              <div class="reader-exit-copy">
-                <strong>读完这章，下一步可以这样走</strong>
-                <p>你可以继续下一章，也可以先回详情页看完整目录、作品简介和同类推荐。</p>
-              </div>
-              <div class="reader-exit-actions">
-                <button class="reader-secondary-action" onclick="backToNovel()">回详情页</button>
-                <button class="reader-secondary-action" onclick="viewCatalog()">查看目录</button>
-                <button class="reader-secondary-action" onclick="viewRecommendations()">找同类书</button>
+            <div class="reader-ad-banner">
+              <div class="reader-ad-label">广告</div>
+              <div class="reader-ad-content">
+                <p class="reader-ad-title">📢 广告位招租</p>
+                <p class="reader-ad-desc">此处为黄金广告位，每日覆盖大量活跃读者，欢迎洽谈合作。</p>
+                <a class="reader-ad-contact" href="mailto:contact@example.com">联系我们</a>
               </div>
             </div>
             <div id="membershipPrompt"></div>

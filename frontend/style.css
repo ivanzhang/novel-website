@@ -1661,30 +1661,55 @@ header h1 {
   color: #333;
 }
 
-.reader-exit-panel {
+.reader-ad-banner {
   margin-top: 36px;
-  padding-top: 24px;
+  padding: 24px 20px;
   border-top: 1px solid #edf1f5;
-  display: grid;
-  gap: 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 1px dashed #adb5bd;
+  text-align: center;
+  position: relative;
 }
 
-.reader-exit-copy strong {
-  display: block;
+.reader-ad-label {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 10px;
+  color: #adb5bd;
+  letter-spacing: 0.5px;
+}
+
+.reader-ad-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
   color: #2c3e50;
-  margin-bottom: 8px;
 }
 
-.reader-exit-copy p {
-  margin: 0;
+.reader-ad-desc {
+  margin: 0 0 16px;
   color: #5e6d79;
   line-height: 1.7;
+  font-size: 14px;
 }
 
-.reader-exit-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+.reader-ad-contact {
+  display: inline-block;
+  padding: 9px 24px;
+  border-radius: 999px;
+  background: #2c3e50;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.reader-ad-contact:hover {
+  background: #3d5166;
+  transform: translateY(-1px);
 }
 
 .reader-membership-prompt {
@@ -2024,8 +2049,29 @@ body.night-mode .reader-membership-prompt strong {
   color: #ffffff;
 }
 
-body.night-mode .reader-exit-copy strong {
-  color: #f3f6f8;
+body.night-mode .reader-ad-banner {
+  background: linear-gradient(135deg, #1f2933 0%, #2a3542 100%);
+  border-color: #3d4f5e;
+}
+
+body.night-mode .reader-ad-title {
+  color: #ecf2f6;
+}
+
+body.night-mode .reader-ad-desc {
+  color: #8fa8bc;
+}
+
+body.night-mode .reader-ad-contact {
+  background: #3d5166;
+}
+
+body.night-mode .reader-ad-contact:hover {
+  background: #4e6880;
+}
+
+body.night-mode .reader-ad-label {
+  color: #5e7a8e;
 }
 
 body.night-mode .reader-exit-copy p {
