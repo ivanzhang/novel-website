@@ -325,7 +325,12 @@
         }
 
         function viewRecommendations() {
-            location.href = `novel.html?id=${novelId}#recommendationsSection`;
+            const category = currentNovel?.primary_category || currentNovel?.source_category || '';
+            if (category) {
+                location.href = `index.html?category=${encodeURIComponent(category)}`;
+            } else {
+                location.href = 'index.html';
+            }
         }
 
         function renderMembershipPrompt() {
