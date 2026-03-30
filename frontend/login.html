@@ -48,6 +48,8 @@
   <script src="runtime-config.js"></script>
   <script>
     const API_URL = window.NOVEL_APP_CONFIG.apiUrl;
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirectUrl = urlParams.get('redirect') || 'index.html';
     let isLogin = true;
 
     function escapeHtml(str) {
@@ -101,7 +103,7 @@
           const data = await response.json();
           if (response.ok) {
             localStorage.setItem('token', data.token);
-            location.href = 'index.html';
+            location.href = redirectUrl;
           } else {
             document.getElementById('message').innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
           }
@@ -124,11 +126,23 @@
           });
           const data = await response.json();
           if (response.ok) {
-            document.getElementById('message').innerHTML = `<p class="success">注册成功！你的用户名是：<strong>${escapeHtml(data.username)}</strong>，请记住它用于登录。</p>`;
-            setTimeout(() => {
-              document.getElementById('username').value = data.username;
-              toggleForm();
-            }, 2500);
+            document.getElementById('message').innerHTML = `<p class="success">注册成功！你的用户名是：<strong>${escapeHtml(data.username)}</strong>，请记住它用于下次登录。</p>`;
+            // 自动登录后跳回原页面
+            const loginRes = await fetch(`${API_URL}/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: data.username, password: regPassword })
+            });
+            const loginData = await loginRes.json();
+            if (loginRes.ok) {
+              localStorage.setItem('token', loginData.token);
+              setTimeout(() => { location.href = redirectUrl; }, 1500);
+            } else {
+              setTimeout(() => {
+                document.getElementById('username').value = data.username;
+                toggleForm();
+              }, 2000);
+            }
           } else {
             document.getElementById('message').innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
           }

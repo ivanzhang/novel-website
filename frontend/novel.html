@@ -91,7 +91,7 @@
 
     function buildPrimaryAction(novel, progress) {
       if (!token) {
-        return `<button class="btn-primary" onclick="location.href='login.html'">登录后开始阅读</button>`;
+        return `<button class="btn-primary" onclick="autoRegisterAndRead()">直接阅读</button>`;
       }
 
       if (progress && progress.chapter_number) {
@@ -183,14 +183,11 @@
     }
 
     function renderMembershipConversionCard(novel, memberCenter, progress) {
-      // 已登录但阅读不足3本时，不显示付费引导卡片，避免过早给用户收费压力
-      if (token) {
-        const profile = memberCenter?.profile;
-        const activeMember = Boolean(profile?.days_remaining > 0 && profile?.is_member);
-        if (!activeMember && (window.__novelsRead || 0) < 3) {
-          return '';
-        }
-      }
+      // 未登录 或 已登录但阅读不足3本时，整个卡片不显示
+      if (!token) return '';
+      const profile = memberCenter?.profile;
+      const activeMember = Boolean(profile?.days_remaining > 0 && profile?.is_member);
+      if (!activeMember && (window.__novelsRead || 0) < 3) return '';
 
       const state = buildMembershipConversionState(novel, memberCenter, progress);
 
@@ -488,6 +485,36 @@
 
     function startReading() {
       location.href = `reader.html?novelId=${novelId}&chapter=1`;
+    }
+
+    async function autoRegisterAndRead() {
+      // 自动注册一个账号，然后直接跳去阅读
+      try {
+        // 生成一个随机密码（用户不需要知道，后续可在设置页绑定邮箱找回）
+        const tempPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+        const response = await fetch(`${API_URL}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: tempPassword })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          // 自动登录
+          const loginRes = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: data.username, password: tempPassword })
+          });
+          const loginData = await loginRes.json();
+          if (loginRes.ok) {
+            localStorage.setItem('token', loginData.token);
+            location.href = `reader.html?novelId=${novelId}&chapter=1`;
+          }
+        }
+      } catch (e) {
+        // 注册失败降级到登录页
+        location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
+      }
     }
 
     function continueReading(chapterNumber) {
